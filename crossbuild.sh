@@ -9,9 +9,11 @@
 # - figure out the subuids
 # - script lxd on zfs install
 
+PACKAGES_TO_DEPLOY=$@
 TARGET_ARCH=armhf
 PACKAGE=`dpkg-parsechangelog --show-field Source`
 PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
+NEW_PACKAGE_VERSION=$PACKAGE_VERSION-local~`date +%s`
 LXD_CONTAINER=$PACKAGE-$TARGET_ARCH-builder
 DEVICE_PASSWORD=0000
 USERNAME=`id --user --name`
@@ -79,9 +81,10 @@ if [ $DEPS_INSTALLED -ne 0 ] ; then
 fi;
 
 # crossbuild package in container
+exec_container rm ../*.deb
 exec_container rm debian/*.debhelper.log
 exec_container cp debian/changelog debian/changelog.orig
-exec_container dch -v $PACKAGE_VERSION-local~`date +%s` \'\'
+exec_container dch -v $NEW_PACKAGE_VERSION \'\'
 exec_container DEB_BUILD_OPTIONS=parallel=$PARALLEL_BUILD dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc
 exec_container mv debian/changelog.orig debian/changelog
 if [ $? -ne 0 ] ; then exit; fi;
@@ -98,19 +101,25 @@ exec_device mkdir /tmp/repo
 adb push $DEBS_TARBALL /tmp/repo/
 exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm /tmp/repo/$DEBS_TARBALL"
 
-# create local deb repository on device
-exec_device test -e /tmp/repo/$CREATE_REPO_SCRIPT
-REPO_SETUP=$?
-if [ $REPO_SETUP -ne 0 ] ; then
-    adb push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
-    exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
-    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A add-apt-repository -y "deb file:///tmp/repo/ /"
-    SERIES=$(adb shell lsb_release -cs | tr -d '\r')
-    exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
+if [ $PACKAGES_TO_DEPLOY ] ; then
+    echo "Installing manually specified packages:" $PACKAGES_TO_DEPLOY
+    for package in $PACKAGES_TO_DEPLOY ; do
+        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i '/tmp/repo/'$package'_'$NEW_PACKAGE_VERSION'_'$TARGET_ARCH'.deb'
+    done
+else
+    # create local deb repository on device
+    exec_device test -e /tmp/repo/$CREATE_REPO_SCRIPT
+    REPO_SETUP=$?
+    if [ $REPO_SETUP -ne 0 ] ; then
+        adb push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
+        exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
+        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A add-apt-repository -y "deb file:///tmp/repo/ /"
+        SERIES=$(adb shell lsb_release -cs | tr -d '\r')
+        exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
+    fi;
+
+    # install debian packages on device
+    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
+    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade --yes --force-yes
 fi;
-
-# install debian packages on device
-exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
-exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade --yes --force-yes
-
 
