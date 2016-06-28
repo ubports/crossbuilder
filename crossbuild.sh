@@ -61,10 +61,12 @@ exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
 exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
 exec_container_root apt update
 exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE
+# FIXME: should reports errors and stop if any
 
 # crossbuild package in container
 exec_container rm debian/*.debhelper.log
 exec_container DEB_BUILD_OPTIONS=parallel=$PARALLEL_BUILD dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc
+# FIXME: should reports errors and stop if any
 
 # transfer resulting debian packages to local machine
 exec_container tar cf ../$DEBS_TARBALL ../*.deb
