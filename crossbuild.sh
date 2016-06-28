@@ -101,6 +101,7 @@ exec_device mkdir -p /tmp/repo
 adb push $DEBS_TARBALL /tmp/repo/
 exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm /tmp/repo/$DEBS_TARBALL"
 
+# install debian packages on device
 if [ ! -z "$PACKAGES_TO_DEPLOY" ] ; then
     echo "Installing manually specified packages:" $PACKAGES_TO_DEPLOY
     DPKG_ARGS=""
@@ -119,9 +120,10 @@ else
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A add-apt-repository -y "deb file:///tmp/repo/ /"
         SERIES=$(adb shell lsb_release -cs | tr -d '\r')
         exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
+    else
+        exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
     fi;
 
-    # install debian packages on device
     exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
     exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade --yes --force-yes
 fi;
