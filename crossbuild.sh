@@ -103,9 +103,11 @@ exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm /tmp/repo/$DE
 
 if [ ! -z "$PACKAGES_TO_DEPLOY" ] ; then
     echo "Installing manually specified packages:" $PACKAGES_TO_DEPLOY
+    DPKG_ARGS=""
     for package in $PACKAGES_TO_DEPLOY ; do
-        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i '/tmp/repo/'$package'_'$NEW_PACKAGE_VERSION'_'$TARGET_ARCH'.deb'
+        DPKG_ARGS="$DPKG_ARGS /tmp/repo/$package"_"$NEW_PACKAGE_VERSION"_"$TARGET_ARCH.deb"
     done
+    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i $DPKG_ARGS 
 else
     # create local deb repository on device
     exec_device test -e /tmp/repo/$CREATE_REPO_SCRIPT
