@@ -73,14 +73,14 @@ if [ $DEPS_INSTALLED -ne 0 ] ; then
     exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
     exec_container_root apt update
     exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE
-    # FIXME: should reports errors and stop if any
+    if [ $? -ne 0 ] ; then exit; fi;
     exec_container touch $USERDIR/dependencies_installed
 fi;
 
 # crossbuild package in container
 exec_container rm debian/*.debhelper.log
 exec_container DEB_BUILD_OPTIONS=parallel=$PARALLEL_BUILD dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc
-# FIXME: should reports errors and stop if any
+if [ $? -ne 0 ] ; then exit; fi;
 
 # transfer resulting debian packages to local machine
 exec_container tar cf ../$DEBS_TARBALL ../*.deb
