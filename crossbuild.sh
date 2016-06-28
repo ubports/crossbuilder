@@ -8,6 +8,7 @@
 # - implement a 'make install' version
 # - figure out the subuids
 # - script lxd on zfs install
+# - add ccache by default
 
 PACKAGES_TO_DEPLOY=$@
 TARGET_ARCH=armhf
@@ -88,7 +89,7 @@ dch -v $NEW_PACKAGE_VERSION \'\'
 exec_container DEB_BUILD_OPTIONS=parallel=$PARALLEL_BUILD dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc
 BUILD_SUCCESS=$?
 exec_container mv debian/changelog.orig debian/changelog
-if [ BUILD_SUCCESS -ne 0 ] ; then exit; fi;
+if [ $BUILD_SUCCESS -ne 0 ] ; then exit; fi;
 
 # transfer resulting debian packages to local machine
 exec_container tar cf ../$DEBS_TARBALL ../*.deb
