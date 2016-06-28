@@ -1,7 +1,9 @@
 #!/bin/sh
 
 # TODO:
-# - option to cleanup
+# - option to cleanup device
+# - option to cleanup container
+# - add option to force installation of dependencies
 # - make it faster: bypass apt update
 # - implement a 'make install' version
 # - figure out the subuids
@@ -63,12 +65,17 @@ lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$USERDIR/
 exec_container [ -x debian/bileto_pre_release_hook ] && ./debian/bileto_pre_release_hook
 
 # install build dependencies in container
-exec_container dpkg-buildpackage -S -nc
-exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
-exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
-exec_container_root apt update
-exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE
-# FIXME: should reports errors and stop if any
+exec_container test -e $USERDIR/dependencies_installed
+DEPS_INSTALLED=$?
+if [ $DEPS_INSTALLED -ne 0 ] ; then
+    exec_container dpkg-buildpackage -S -nc
+    exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
+    exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
+    exec_container_root apt update
+    exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE
+    # FIXME: should reports errors and stop if any
+    exec_container touch $USERDIR/dependencies_installed
+fi;
 
 # crossbuild package in container
 exec_container rm debian/*.debhelper.log
