@@ -108,6 +108,5 @@ fi;
 
 # install debian packages on device
 exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade --yes --force-yes
-exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get autoremove --yes --force-yes
 
 
