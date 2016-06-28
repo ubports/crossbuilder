@@ -104,9 +104,9 @@ if [ $REPO_SETUP -ne 0 ] ; then
     SERIES=$(adb shell lsb_release -cs | tr -d '\r')
     exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
 fi;
-#exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
 
 # install debian packages on device
+exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
 exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade --yes --force-yes
 
 
