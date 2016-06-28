@@ -101,7 +101,7 @@ exec_device mkdir /tmp/repo
 adb push $DEBS_TARBALL /tmp/repo/
 exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm /tmp/repo/$DEBS_TARBALL"
 
-if [ $PACKAGES_TO_DEPLOY ] ; then
+if [ -z "$PACKAGES_TO_DEPLOY" ] ; then
     echo "Installing manually specified packages:" $PACKAGES_TO_DEPLOY
     for package in $PACKAGES_TO_DEPLOY ; do
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i '/tmp/repo/'$package'_'$NEW_PACKAGE_VERSION'_'$TARGET_ARCH'.deb'
