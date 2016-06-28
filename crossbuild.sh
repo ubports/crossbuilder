@@ -110,8 +110,9 @@ if [ ! -z "$PACKAGES_TO_DEPLOY" ] ; then
     exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i $DPKG_ARGS 
 else
     # create local deb repository on device
-    exec_device test -e /tmp/repo/$CREATE_REPO_SCRIPT
+    adb pull /tmp/repo/$CREATE_REPO_SCRIPT
     REPO_SETUP=$?
+    rm $CREATE_REPO_SCRIPT
     if [ $REPO_SETUP -ne 0 ] ; then
         adb push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
         exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
