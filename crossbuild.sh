@@ -86,8 +86,9 @@ exec_container rm debian/*.debhelper.log
 exec_container cp debian/changelog debian/changelog.orig
 dch -v $NEW_PACKAGE_VERSION \'\'
 exec_container DEB_BUILD_OPTIONS=parallel=$PARALLEL_BUILD dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc
+BUILD_SUCCESS=$?
 exec_container mv debian/changelog.orig debian/changelog
-if [ $? -ne 0 ] ; then exit; fi;
+if [ BUILD_SUCCESS -ne 0 ] ; then exit; fi;
 
 # transfer resulting debian packages to local machine
 exec_container tar cf ../$DEBS_TARBALL ../*.deb
