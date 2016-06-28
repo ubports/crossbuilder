@@ -95,17 +95,19 @@ adb push $DEBS_TARBALL /tmp/repo/
 exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm /tmp/repo/$DEBS_TARBALL"
 
 # create local deb repository on device
-adb push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
-exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
-exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A add-apt-repository -y "deb file:///tmp/repo/ /"
-exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
+exec_device test -e /tmp/repo/$CREATE_REPO_SCRIPT
+REPO_SETUP=$?
+if [ $REPO_SETUP -ne 0 ] ; then
+    adb push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
+    exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
+    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A add-apt-repository -y "deb file:///tmp/repo/ /"
+    SERIES=$(adb shell lsb_release -cs | tr -d '\r')
+    exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
+fi;
+#exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
 
 # install debian packages on device
-SERIES=$(adb shell lsb_release -cs | tr -d '\r')
-#exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\n' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
-exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
 exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade --yes --force-yes
 exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get autoremove --yes --force-yes
-
 
 
