@@ -10,7 +10,8 @@
 # - script lxd on zfs install
 
 TARGET_ARCH=armhf
-PACKAGE=`dpkg-parsechangelog | grep -E ^Source: | cut -d" " -f2`
+PACKAGE=`dpkg-parsechangelog --show-field Source`
+PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
 LXD_CONTAINER=$PACKAGE-$TARGET_ARCH-builder
 DEVICE_PASSWORD=0000
 USERNAME=`id --user --name`
@@ -79,7 +80,10 @@ fi;
 
 # crossbuild package in container
 exec_container rm debian/*.debhelper.log
+exec_container cp debian/changelog debian/changelog.orig
+exec_container dch -v $PACKAGE_VERSION-local~`date +%s` \'\'
 exec_container DEB_BUILD_OPTIONS=parallel=$PARALLEL_BUILD dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc
+exec_container mv debian/changelog.orig debian/changelog
 if [ $? -ne 0 ] ; then exit; fi;
 
 # transfer resulting debian packages to local machine
