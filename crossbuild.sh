@@ -1,5 +1,12 @@
 #!/bin/sh
 
+# TODO:
+# - option to cleanup
+# - make it faster: bypass apt update
+# - implement a 'make install' version
+# - figure out the subuids
+# - script lxd on zfs install
+
 TARGET_ARCH=armhf
 PACKAGE=`dpkg-parsechangelog | grep -E ^Source: | cut -d" " -f2`
 LXD_CONTAINER=$PACKAGE-$TARGET_ARCH-builder
