@@ -101,7 +101,7 @@ exec_container rm ../*.deb
 exec_container rm debian/*.debhelper.log
 exec_container cp debian/changelog debian/changelog.orig
 dch -v $NEW_PACKAGE_VERSION \'\'
-exec_container DEB_BUILD_OPTIONS=\'parallel=$PARALLEL_BUILD nostrip\' dpkg-buildpackage -a$TARGET_ARCH -us -uc -I -Iobj-* -Idebian/tmp/* -b
+exec_container DEB_BUILD_OPTIONS=\'parallel=$PARALLEL_BUILD nostrip\' dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc -I -Iobj-* -Idebian/tmp/* -b
 BUILD_SUCCESS=$?
 exec_container mv debian/changelog.orig debian/changelog
 if [ $BUILD_SUCCESS -ne 0 ] ; then exit; fi;
