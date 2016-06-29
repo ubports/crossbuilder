@@ -14,7 +14,7 @@ PACKAGES_TO_DEPLOY=$@
 TARGET_ARCH=armhf
 PACKAGE=`dpkg-parsechangelog --show-field Source`
 PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
-NEW_PACKAGE_VERSION=$PACKAGE_VERSION-local~`date +%s`
+NEW_PACKAGE_VERSION=$PACKAGE_VERSION"local~"`date +%s`
 LXD_CONTAINER=$PACKAGE-$TARGET_ARCH-builder
 DEVICE_PASSWORD=0000
 USERNAME=`id --user --name`
@@ -72,7 +72,7 @@ exec_container [ -x debian/bileto_pre_release_hook ] && ./debian/bileto_pre_rele
 exec_container test -e $USERDIR/dependencies_installed
 DEPS_INSTALLED=$?
 if [ $DEPS_INSTALLED -ne 0 ] ; then
-    exec_container dpkg-buildpackage -S -nc
+    exec_container dpkg-buildpackage -S -nc -I -Iobj-* -Idebian/tmp/*
     exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
     exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
     exec_container_root apt update
@@ -86,7 +86,7 @@ exec_container rm ../*.deb
 exec_container rm debian/*.debhelper.log
 exec_container cp debian/changelog debian/changelog.orig
 dch -v $NEW_PACKAGE_VERSION \'\'
-exec_container DEB_BUILD_OPTIONS=parallel=$PARALLEL_BUILD dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc
+exec_container DEB_BUILD_OPTIONS=parallel=$PARALLEL_BUILD dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc -I -Iobj-* -Idebian/tmp/* -b
 BUILD_SUCCESS=$?
 exec_container mv debian/changelog.orig debian/changelog
 if [ $BUILD_SUCCESS -ne 0 ] ; then exit; fi;
