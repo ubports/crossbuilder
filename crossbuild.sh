@@ -75,12 +75,16 @@ exec_container [ -x debian/bileto_pre_release_hook ] && ./debian/bileto_pre_rele
 exec_container test -e $USERDIR/dependencies_installed
 DEPS_INSTALLED=$?
 if [ $DEPS_INSTALLED -ne 0 ] ; then
+    exec_container cp debian/changelog debian/changelog.orig
+    dch -v $NEW_PACKAGE_VERSION \'\'
     exec_container dpkg-buildpackage -S -nc -I -Iobj-* -Idebian/tmp/*
     exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
     exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
     exec_container_root apt update
     exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE
-    if [ $? -ne 0 ] ; then exit; fi;
+    INSTALL_DEPS_SUCCESS=$?
+    exec_container mv debian/changelog.orig debian/changelog
+    if [ $INSTALL_DEPS_SUCCESS -ne 0 ] ; then exit; fi;
 
     # workaround various issues with qmake cross compilation
     exec_container_root "printf '/usr/lib/x86_64-linux-gnu/qt5/arm-linux-gnueabihf/bin\n/usr/lib/x86_64-linux-gnu/qt5/bin\n/usr/lib/x86_64-linux-gnu\n' > /usr/share/qtchooser/qt5-x86_64-linux-gnu-arm-linux-gnueabihf.conf"
