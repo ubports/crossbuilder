@@ -11,11 +11,14 @@
 # - add ccache by default
 
 PACKAGES_TO_DEPLOY=$@
+HOST_ARCH=amd64
 TARGET_ARCH=armhf
 PACKAGE=`dpkg-parsechangelog --show-field Source`
 PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
 NEW_PACKAGE_VERSION=$PACKAGE_VERSION"local~"`date +%s`
 LXD_CONTAINER=$PACKAGE-$TARGET_ARCH-builder
+TARGET_UBUNTU=15.04
+LXD_IMAGE=ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
 DEVICE_PASSWORD=0000
 USERNAME=`id --user --name`
 GROUPNAME=$USERNAME
@@ -55,7 +58,7 @@ if [ $CONTAINER_EXISTS -eq 0 ] ; then
   lxc start $LXD_CONTAINER
 else
   lxc remote --protocol=simplestreams --public=true --accept-certificate=true add sdk https://sdk-images.canonical.com
-  lxc init sdk:ubuntu-sdk-15.04-amd64-$TARGET_ARCH-dev $LXD_CONTAINER
+  lxc init sdk:$LXD_IMAGE $LXD_CONTAINER
   printf "lxc.id_map = g $GROUPID `id --group` 1\nlxc.id_map = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
   lxc start $LXD_CONTAINER
   lxc exec --env GROUPID=$GROUPID --env GROUPNAME=$GROUPNAME $LXD_CONTAINER -- addgroup --gid $GROUPID $GROUPNAME
