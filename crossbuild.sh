@@ -1,14 +1,16 @@
 #!/bin/sh
 
 # TODO:
-# - option to cleanup device
+# - stop if source package build fails
 # - option to cleanup container
-# - add option to force installation of dependencies
+# - option to not deploy
+# - add ccache by default
+
+# - option to cleanup device
 # - make it faster: bypass apt update
 # - implement a 'make install' version
 # - figure out the subuids
 # - script lxd on zfs install
-# - add ccache by default
 
 PACKAGES_TO_DEPLOY=$@
 HOST_ARCH=amd64
