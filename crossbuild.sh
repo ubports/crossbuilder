@@ -81,6 +81,14 @@ if [ $DEPS_INSTALLED -ne 0 ] ; then
     exec_container_root apt update
     exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE
     if [ $? -ne 0 ] ; then exit; fi;
+
+    # workaround various issues with qmake cross compilation
+    exec_container_root "printf '/usr/lib/x86_64-linux-gnu/qt5/arm-linux-gnueabihf/bin\n/usr/lib/x86_64-linux-gnu/qt5/bin\n/usr/lib/x86_64-linux-gnu\n' > /usr/share/qtchooser/qt5-x86_64-linux-gnu-arm-linux-gnueabihf.conf"
+    exec_container_root ln -s ../../../share/qtchooser/qt5-x86_64-linux-gnu-arm-linux-gnueabihf.conf /usr/lib/x86_64-linux-gnu/qtchooser/qt5-arm-linux-gnueabihf.conf
+    exec_container_root ln -s ../../../share/qtchooser/qt5-x86_64-linux-gnu-arm-linux-gnueabihf.conf /usr/lib/x86_64-linux-gnu/qtchooser/5-arm-linux-gnueabihf.conf
+    exec_container_root mkdir -p /usr/lib/x86_64-linux-gnu/qt5/arm-linux-gnueabihf/bin
+    exec_container_root ln /usr/bin/qt5-qmake-arm-linux-gnueabihf /usr/lib/x86_64-linux-gnu/qt5/arm-linux-gnueabihf/bin/qmake
+
     exec_container touch $USERDIR/dependencies_installed
 fi;
 
