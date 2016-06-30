@@ -146,7 +146,9 @@ else
         exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
     fi;
 
+    exec_device "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 50' /etc/apt/preferences.d/extra-ppas.pref"
     exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
     exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade --yes --force-yes
+    exec_device "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 1001' /etc/apt/preferences.d/extra-ppas.pref"
 fi;
 
