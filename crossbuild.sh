@@ -1,10 +1,12 @@
 #!/bin/sh
 
 # TODO:
+# - option to force clean/rebuild
 # - stop if source package build fails
 # - option to cleanup container
 # - option to not deploy
 # - add ccache by default
+# - support building multiple projects that depend on each other
 
 # - option to cleanup device
 # - make it faster: bypass apt update
@@ -16,6 +18,7 @@ PACKAGES_TO_DEPLOY=$@
 HOST_ARCH=amd64
 TARGET_ARCH=armhf
 PACKAGE=`dpkg-parsechangelog --show-field Source`
+#PACKAGE=`basename $PWD` # TODO: support non deb
 PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
 NEW_PACKAGE_VERSION=$PACKAGE_VERSION"local~"`date +%s`
 LXD_CONTAINER=$PACKAGE-$TARGET_ARCH-builder
