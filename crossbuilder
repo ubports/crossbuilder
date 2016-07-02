@@ -260,6 +260,8 @@ else
         ;;
         *)
             display_help
+            echo ""
+            echo "error: unknown command: $COMMAND"
             exit 1
         ;;
     esac
