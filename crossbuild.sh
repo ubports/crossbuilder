@@ -20,7 +20,11 @@ TARGET_ARCH=armhf
 PACKAGE=`dpkg-parsechangelog --show-field Source`
 #PACKAGE=`basename $PWD` # TODO: support non deb
 PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
-NEW_PACKAGE_VERSION=$PACKAGE_VERSION"local~"`date +%s`
+if [ -z "$PACKAGES_TO_DEPLOY" ] ; then
+    NEW_PACKAGE_VERSION=$PACKAGE_VERSION"local~"`date +%s`
+else
+    NEW_PACKAGE_VERSION=$PACKAGE_VERSION
+fi;
 LXD_CONTAINER=$PACKAGE-$TARGET_ARCH-builder
 TARGET_UBUNTU=15.04
 LXD_IMAGE=ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
@@ -105,6 +109,7 @@ fi;
 exec_container rm ../*.deb
 exec_container rm debian/*.debhelper.log
 exec_container cp debian/changelog debian/changelog.orig
+
 dch -v $NEW_PACKAGE_VERSION \'\'
 exec_container DEB_BUILD_OPTIONS=\'parallel=$PARALLEL_BUILD nostrip\' dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc -I -Iobj-* -Idebian/tmp/* -b
 BUILD_SUCCESS=$?
