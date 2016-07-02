@@ -11,6 +11,13 @@
 # - figure out the subuids for lxd
 # - script lxd on zfs install
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+LIGHT_RED='\033[1;31m'
+LIGHT_GREEN='\033[1;32m'
+NC='\033[0m'
+ERROR_COLOR=$LIGHT_RED
+POSITIVE_COLOR=$GREEN
 
 display_help () {
     echo "Usage: `basename $0` [command]"
@@ -80,11 +87,11 @@ new_container () {
     lxc info $LXD_CONTAINER > /dev/null 2>&1
     CONTAINER_EXISTS=$?
     if [ $CONTAINER_EXISTS -eq 0 ] ; then
-        echo "LXD container $LXD_CONTAINER already exists."
+        echo "${POSITIVE_COLOR}LXD container $LXD_CONTAINER already exists.${NC}"
         # FIXME: check if the container is already started
         lxc start $LXD_CONTAINER
     else
-        echo "Creating LXD container $LXD_CONTAINER using $LXD_IMAGE."
+        echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         lxc remote --protocol=simplestreams --public=true --accept-certificate=true add sdk https://sdk-images.canonical.com
         lxc init sdk:$LXD_IMAGE $LXD_CONTAINER
         printf "lxc.id_map = g $GROUPID `id --group` 1\nlxc.id_map = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
@@ -93,19 +100,19 @@ new_container () {
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
     fi
-    echo "Mounting $PWD in container."
+    echo "${POSITIVE_COLOR}Mounting $PWD in container.${NC}"
     # FIXME: check if device exists already
     # FIXME: better name than 'mymount'
     lxc config device add $LXD_CONTAINER mymount disk source=$PWD path=$MOUNT_POINT
 }
 
 delete_container () {
-    echo "Deleting LXD container $LXD_CONTAINER."
+    echo "${POSITIVE_COLOR}Deleting LXD container $LXD_CONTAINER.${NC}"
     lxc delete -f $LXD_CONTAINER
 }
 
 shell_container () {
-    echo "Entering shell in LXD container $LXD_CONTAINER."
+    echo "${POSITIVE_COLOR}Entering shell in LXD container $LXD_CONTAINER.${NC}"
     lxc exec $LXD_CONTAINER bash
 }
 
@@ -116,7 +123,7 @@ install_dependencies () {
     exec_container test -e $USERDIR/dependencies_installed
     DEPS_INSTALLED=$?
     if [ $DEPS_INSTALLED -ne 0 ] ; then
-        echo "Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER."        
+        echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"       
         exec_container_root apt install -y debhelper
         if [ $? -ne 0 ] ; then exit 1; fi;
 
@@ -142,13 +149,13 @@ install_dependencies () {
 
         exec_container touch $USERDIR/dependencies_installed
     else
-        echo "$TARGET_ARCH build dependencies for $PACKAGE already installed in container $LXD_CONTAINER."
+        echo "${POSITIVE_COLOR}$TARGET_ARCH build dependencies for $PACKAGE already installed in container $LXD_CONTAINER.${NC}"
     fi;
 }
 
 build () {
     # crossbuild package in container
-    echo "Crossbuilding $PACKAGE for $TARGET_ARCH."
+    echo "${POSITIVE_COLOR}Crossbuilding $PACKAGE for $TARGET_ARCH.${NC}"
     exec_container rm ../*.deb
     exec_container rm debian/*.debhelper.log
     exec_container cp debian/changelog debian/changelog.orig
@@ -160,22 +167,22 @@ build () {
     if [ $BUILD_SUCCESS -ne 0 ] ; then exit; fi;
 
     # transfer resulting debian packages to local machine
-    echo "Packing build artifacts in $DEB_TARBALL."
+    echo "${POSITIVE_COLOR}Packing build artifacts in $DEB_TARBALL.${NC}"
     exec_container tar cf ../$DEBS_TARBALL ../*.deb
     lxc file pull $LXD_CONTAINER$USERDIR/$DEBS_TARBALL .
 }
 
 clean () {
-    echo "Cleaning previous build of $PACKAGE for $TARGET_ARCH."
+    echo "${POSITIVE_COLOR}Cleaning previous build of $PACKAGE for $TARGET_ARCH.${NC}"
 }
 
 deploy_to_device () {
     DEVICE_STATE=`adb get-state`
     if [ $DEVICE_STATE != "device" ] ; then
-        echo "No device connected to deploy to."
+        echo "${ERROR_COLOR}No device connected to deploy to.${NC}"
         exit 1
     fi;
-    echo "Transferring build artifacts to device."
+    echo "${POSITIVE_COLOR}Transferring build artifacts to device.${NC}"
     # tranfer debian packages to device
     exec_device "printf '#\041/bin/sh\necho $DEVICE_PASSWORD' >/tmp/askpass.sh"
     exec_device chmod +x /tmp/askpass.sh
@@ -186,14 +193,14 @@ deploy_to_device () {
 
     # install debian packages on device
     if [ ! -z "$PACKAGES_TO_DEPLOY" ] ; then
-        echo "Installing manually specified packages:" $PACKAGES_TO_DEPLOY
+        echo "${POSITIVE_COLOR}Installing manually specified packages:" $PACKAGES_TO_DEPLOY${NC}
         DPKG_ARGS=""
         for package in $PACKAGES_TO_DEPLOY ; do
             DPKG_ARGS="$DPKG_ARGS /tmp/repo/$package"_"$NEW_PACKAGE_VERSION"_"$TARGET_ARCH.deb"
         done
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i $DPKG_ARGS 
     else
-        echo "Upgrading packages already installed on device with newly built ones."
+        echo "${POSITIVE_COLOR}Upgrading packages already installed on device with newly built ones.${NC}"
         # create local deb repository on device
         adb pull /tmp/repo/$CREATE_REPO_SCRIPT
         REPO_SETUP=$?
@@ -218,7 +225,7 @@ deploy_to_device () {
 ARGUMENTS=$@
 if [ -z "$ARGUMENTS" ] ; then
     variables
-    echo "Crossbuilding $PACKAGE for $TARGET_ARCH and deploying to device."
+    echo "${POSITIVE_COLOR}Crossbuilding $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
     new_container
     install_dependencies
     build
@@ -261,7 +268,7 @@ else
         *)
             display_help
             echo ""
-            echo "error: unknown command: $COMMAND"
+            echo "${ERROR_COLOR}error: unknown command: $COMMAND${NC}"
             exit 1
         ;;
     esac
