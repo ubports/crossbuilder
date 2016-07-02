@@ -217,8 +217,8 @@ deploy_to_device () {
 
 ARGUMENTS=$@
 if [ -z "$ARGUMENTS" ] ; then
-    echo "Crossbuilding $PACKAGE for $TARGET_ARCH and deploying to device."
     variables
+    echo "Crossbuilding $PACKAGE for $TARGET_ARCH and deploying to device."
     new_container
     install_dependencies
     build
