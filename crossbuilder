@@ -21,7 +21,6 @@
 # - support building multiple projects that depend on each other
 # - implement a 'make install' version
 
-# - support depending on non sdk lxd images
 # - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
@@ -86,7 +85,6 @@ variables () {
     else
         NEW_PACKAGE_VERSION=$PACKAGE_VERSION
     fi;
-#    LXD_CONTAINER=builder-$PACKAGE-$TARGET_ARCH
     LXD_IMAGE_NO_DOT=$(echo $LXD_IMAGE | sed "s/\./-/")
     LXD_CONTAINER=builder-$PACKAGE-$LXD_IMAGE_NO_DOT
     DEVICE_PASSWORD=0000
