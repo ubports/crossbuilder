@@ -30,7 +30,6 @@
 # - figure out the subuids for lxd
 # - script lxd on zfs install
 # - check if a newer version of the container's image is available
-# - determine PARALLEL_BUILD better
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -102,11 +101,11 @@ variables () {
     SCRIPT_DIR=`dirname $0`
     DEBS_TARBALL=built_debs.tar
     CREATE_REPO_SCRIPT=create_repository.sh
-    PARALLEL_BUILD=8
+    PARALLEL_BUILD=$((`nproc` + 1))
 }
 
 new_container () {
-    # setup the crossbuilding container
+    # setup the building container
     lxc info $LXD_CONTAINER > /dev/null 2>&1
     CONTAINER_EXISTS=$?
     if [ $CONTAINER_EXISTS -eq 0 ] ; then
@@ -177,8 +176,8 @@ install_dependencies () {
 }
 
 build () {
-    # crossbuild package in container
-    echo "${POSITIVE_COLOR}Crossbuilding $PACKAGE for $TARGET_ARCH.${NC}"
+    # build package in container
+    echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
     exec_container rm ../*.deb
     exec_container rm debian/*.debhelper.log
     exec_container cp debian/changelog debian/changelog.orig
@@ -248,7 +247,7 @@ deploy_to_device () {
 ARGUMENTS=$@
 if [ -z "$ARGUMENTS" ] ; then
     variables
-    echo "${POSITIVE_COLOR}Crossbuilding $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
+    echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
     new_container
     install_dependencies
     build
