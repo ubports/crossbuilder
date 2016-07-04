@@ -78,7 +78,6 @@ exec_container () {
 }
 
 variables () {
-    # FIXME: abort if no changelog is present
     PACKAGE=`dpkg-parsechangelog --show-field Source`
     #PACKAGE=`basename $PWD` # TODO: support non deb
     PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
