@@ -19,7 +19,6 @@
 # - support workflow using apt-get source
 # - support building multiple projects that depend on each other
 # - implement a 'make install' version
-# - support custom device password
 
 # - support per project configuration; for example post deploy rules
 # - make it faster: bypass apt update
@@ -60,6 +59,7 @@ display_help () {
     echo "  --architecture   - Architecture to build for [defaults to armhf]."
     echo "  --ubuntu         - Version of Ubuntu to build for [defaults to 15.04]."
     echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-15.04-amd64-armhf-dev)."
+    echo "  --password       - User password of the device to deploy to [defaults to 0000]."
 }
 
 
@@ -92,7 +92,6 @@ variables () {
     fi;
     LXD_IMAGE_NO_DOT=$(echo $LXD_IMAGE | sed "s/\./-/")
     LXD_CONTAINER=builder-$PACKAGE-$LXD_IMAGE_NO_DOT
-    DEVICE_PASSWORD=0000
     USERNAME=`id --user --name`
     GROUPNAME=$USERNAME
     USERID=150000
@@ -276,6 +275,7 @@ deploy_to_device () {
 HOST_ARCH=`dpkg --print-architecture`
 TARGET_ARCH=armhf
 TARGET_UBUNTU=15.04
+DEVICE_PASSWORD=0000
 
 while [ "$1" != "" ]; do
     OPTION=`echo $1 | awk -F= '{print $1}'`
@@ -294,6 +294,9 @@ while [ "$1" != "" ]; do
             ;;
             --lxd-image)
                 LXD_IMAGE=$VALUE
+            ;;
+            --password)
+                DEVICE_PASSWORD=$VALUE
             ;;
             *)
                 display_help
