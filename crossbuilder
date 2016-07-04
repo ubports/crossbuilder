@@ -16,7 +16,6 @@
  
 
 # TODO:
-# - detect local architecture instead of hardcoding it
 # - stop if source package build fails
 # - support listing specific packages to deploy
 # - support specifying target architecture
@@ -76,7 +75,7 @@ exec_container () {
 
 variables () {
     PACKAGES_TO_DEPLOY=$@
-    HOST_ARCH=amd64
+    HOST_ARCH=`dpkg --print-architecture`
     TARGET_ARCH=armhf
     # FIXME: abort if no changelog is present
     PACKAGE=`dpkg-parsechangelog --show-field Source`
