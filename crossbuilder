@@ -104,7 +104,7 @@ setup_lxd () {
     echo -n "Would you like to setup lxd with zfs in your home directory? (y/n) "
     read REPLY
     echo
-    if [ "$REPLY" = y ] ; then ls; fi
+    if [ "$REPLY" = y ]
     then
         echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
         sudo apt-get install -y zfsutils-linux
@@ -118,6 +118,7 @@ setup_lxd () {
         sudo lxd init --auto
     fi
 
+    sudo service lxd restart
 #    zpool import -d /path/to/directory/ -a
     sudo usermod --add-subuids 1000-1000 root
     sudo usermod --add-subgids 1000-1000 root
