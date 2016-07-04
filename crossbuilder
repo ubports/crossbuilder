@@ -16,20 +16,20 @@
  
 
 # TODO:
-# - support listing specific packages to deploy
-# - support specifying target architecture
-# - support depending on non sdk lxd images
 # - detect local architecture instead of hardcoding it
 # - stop if source package build fails
 # - add ccache by default
+# - support listing specific packages to deploy
+# - support specifying target architecture
+# - support depending on non sdk lxd images
 # - support building multiple projects that depend on each other
 
-# - option to cleanup device (undeploy)
 # - make it faster: bypass apt update
 # - implement a 'make install' version
 # - figure out the subuids for lxd
 # - script lxd on zfs install
 # - check if a newer version of the container's image is available
+# - option to cleanup device (undeploy)
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
