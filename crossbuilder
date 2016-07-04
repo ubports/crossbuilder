@@ -196,6 +196,7 @@ build () {
 
 clean () {
     echo "${POSITIVE_COLOR}Cleaning previous build of $PACKAGE for $TARGET_ARCH.${NC}"
+    debian/rules clean
 }
 
 deploy_to_device () {
