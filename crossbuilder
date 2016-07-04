@@ -18,11 +18,15 @@
 # TODO:
 # - support building multiple projects that depend on each other
 # - implement a 'make install' version
+# - support custom device password
 
 # - support per project configuration; for example post deploy rules
 # - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
+
+# DEPENDENCIES:
+#  $ sudo apt install dpkg-dev android-tools-adb
 
 #set -e
 
@@ -107,7 +111,8 @@ setup_lxd () {
     if [ "$REPLY" = y ]
     then
         echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
-        sudo apt-get install -y zfsutils-linux
+        sudo apt-get install -y zfsutils-linux lxd
+        newgrp lxd
         LXD_POOL=~/zfs/lxd.img
         echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
         mkdir `dirname $LXD_POOL`
@@ -119,7 +124,7 @@ setup_lxd () {
     fi
 
     sudo service lxd restart
-#    zpool import -d /path/to/directory/ -a
+#    sudo zpool import -c /etc/zfs/zpool.cache -aN
     sudo usermod --add-subuids 1000-1000 root
     sudo usermod --add-subgids 1000-1000 root
 }
@@ -226,7 +231,7 @@ clean () {
 
 deploy_to_device () {
     DEVICE_STATE=`adb get-state`
-    if [ $DEVICE_STATE != "device" ] ; then
+    if [ "$DEVICE_STATE" != "device" ] ; then
         echo "${ERROR_COLOR}No device connected to deploy to.${NC}"
         exit 1
     fi;
