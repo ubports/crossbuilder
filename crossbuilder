@@ -37,7 +37,7 @@ ERROR_COLOR=$LIGHT_RED
 POSITIVE_COLOR=$GREEN
 
 display_help () {
-    echo "Usage: `basename $0` [command]"
+    echo "Usage: `basename $0` [options] [command]"
     echo "Available commands:"
     echo "    help          - Display this help."
     echo "    new           - Create a container to build in."
@@ -52,8 +52,8 @@ display_help () {
     echo ""
     echo "Options:"
 #    echo "  --verbose       - Print verbose information."
-    echo "  --packages       - Packages to deploy."
-    echo "  --architecture   - Architecture to build for."
+    echo "  --packages       - Packages to deploy [by default: all the ones already installed on device]."
+    echo "  --architecture   - Architecture to build for [defaults to armhf]."
 }
 
 
