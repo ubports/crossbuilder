@@ -18,7 +18,6 @@
 # TODO:
 # - detect local architecture instead of hardcoding it
 # - stop if source package build fails
-# - add ccache by default
 # - support listing specific packages to deploy
 # - support specifying target architecture
 # - support depending on non sdk lxd images
@@ -66,7 +65,7 @@ exec_device () {
 exec_container_root () {
     command="$@"
     #echo lxc exec $LXD_CONTAINER "$@"
-    lxc exec $LXD_CONTAINER -- sh -c "cd $MOUNT_POINT; $command"
+    lxc exec $LXD_CONTAINER -- sh -c "$command"
 }
 
 exec_container () {
@@ -121,6 +120,7 @@ new_container () {
         lxc exec --env GROUPID=$GROUPID --env GROUPNAME=$GROUPNAME $LXD_CONTAINER -- addgroup --gid $GROUPID $GROUPNAME
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
+        exec_container_root "echo 'export PATH=/usr/lib/ccache:\$PATH' >> /etc/bash.bashrc"
     fi
     echo "${POSITIVE_COLOR}Mounting $PWD in container.${NC}"
     # FIXME: check if device exists already
@@ -146,7 +146,7 @@ install_dependencies () {
     DEPS_INSTALLED=$?
     if [ $DEPS_INSTALLED -ne 0 ] ; then
         echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"       
-        exec_container_root apt install -y debhelper
+        exec_container_root apt install -y debhelper ccache
         if [ $? -ne 0 ] ; then exit 1; fi;
 
         lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$USERDIR/
