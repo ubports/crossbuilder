@@ -101,7 +101,8 @@ variables () {
 }
 
 setup_lxd () {
-    read -p "Would you like to setup lxd with zfs in your home directory? " -n 1 -r
+    echo -n "Would you like to setup lxd with zfs in your home directory? "
+    read REPLY
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]
     then
