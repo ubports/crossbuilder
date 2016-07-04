@@ -101,10 +101,10 @@ variables () {
 }
 
 setup_lxd () {
-    echo -n "Would you like to setup lxd with zfs in your home directory? "
+    echo -n "Would you like to setup lxd with zfs in your home directory? (y/n) "
     read REPLY
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]]
+    if [ "$REPLY" = y ] ; then ls; fi
     then
         echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
         sudo apt-get install -y zfsutils-linux
