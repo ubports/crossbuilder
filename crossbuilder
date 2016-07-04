@@ -16,6 +16,7 @@
  
 
 # TODO:
+# - support workflow using apt-get source
 # - support building multiple projects that depend on each other
 # - implement a 'make install' version
 # - support custom device password
