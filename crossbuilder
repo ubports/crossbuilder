@@ -71,7 +71,7 @@ exec_container_root () {
 exec_container () {
     command="$@"
     #echo lxc exec $LXD_CONTAINER "$@"
-    lxc exec $LXD_CONTAINER -- su -c "cd $MOUNT_POINT; $command" $USERNAME
+    lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; echo \$PATH; $command" $USERNAME
 }
 
 variables () {
@@ -120,7 +120,7 @@ new_container () {
         lxc exec --env GROUPID=$GROUPID --env GROUPNAME=$GROUPNAME $LXD_CONTAINER -- addgroup --gid $GROUPID $GROUPNAME
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
-        exec_container_root "echo 'export PATH=/usr/lib/ccache:\$PATH' >> /etc/bash.bashrc"
+        exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
     fi
     echo "${POSITIVE_COLOR}Mounting $PWD in container.${NC}"
     # FIXME: check if device exists already
