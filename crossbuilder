@@ -21,7 +21,6 @@
 # - support building multiple projects that depend on each other
 # - implement a 'make install' version
 
-# - support specifying target architecture
 # - support depending on non sdk lxd images
 # - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
@@ -54,6 +53,7 @@ display_help () {
     echo "Options:"
 #    echo "  --verbose       - Print verbose information."
     echo "  --packages       - Packages to deploy."
+    echo "  --architecture   - Architecture to build for."
 }
 
 
@@ -76,7 +76,6 @@ exec_container () {
 
 variables () {
     HOST_ARCH=`dpkg --print-architecture`
-    TARGET_ARCH=armhf
     # FIXME: abort if no changelog is present
     PACKAGE=`dpkg-parsechangelog --show-field Source`
     #PACKAGE=`basename $PWD` # TODO: support non deb
@@ -248,6 +247,8 @@ deploy_to_device () {
 }
 
 
+TARGET_ARCH=armhf
+
 while [ "$1" != "" ]; do
     OPTION=`echo $1 | awk -F= '{print $1}'`
     VALUE=`echo $1 | awk -F= '{print $2}'`
@@ -256,6 +257,9 @@ while [ "$1" != "" ]; do
             case $OPTION in
             --packages)
                 PACKAGES_TO_DEPLOY=$VALUE
+            ;;
+            --architecture)
+                TARGET_ARCH=$VALUE
             ;;
             *)
                 display_help
