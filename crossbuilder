@@ -54,6 +54,8 @@ display_help () {
 #    echo "  --verbose       - Print verbose information."
     echo "  --packages       - Packages to deploy [by default: all the ones already installed on device]."
     echo "  --architecture   - Architecture to build for [defaults to armhf]."
+    echo "  --ubuntu         - Version of Ubuntu to build for [defaults to 15.04]."
+    echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-15.04-amd64-armhf-dev)."
 }
 
 
@@ -75,7 +77,6 @@ exec_container () {
 }
 
 variables () {
-    HOST_ARCH=`dpkg --print-architecture`
     # FIXME: abort if no changelog is present
     PACKAGE=`dpkg-parsechangelog --show-field Source`
     #PACKAGE=`basename $PWD` # TODO: support non deb
@@ -85,9 +86,9 @@ variables () {
     else
         NEW_PACKAGE_VERSION=$PACKAGE_VERSION
     fi;
-    LXD_CONTAINER=$PACKAGE-$TARGET_ARCH-builder
-    TARGET_UBUNTU=15.04
-    LXD_IMAGE=ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
+#    LXD_CONTAINER=builder-$PACKAGE-$TARGET_ARCH
+    LXD_IMAGE_NO_DOT=$(echo $LXD_IMAGE | sed "s/\./-/")
+    LXD_CONTAINER=builder-$PACKAGE-$LXD_IMAGE_NO_DOT
     DEVICE_PASSWORD=0000
     USERNAME=`id --user --name`
     GROUPNAME=$USERNAME
@@ -247,7 +248,9 @@ deploy_to_device () {
 }
 
 
+HOST_ARCH=`dpkg --print-architecture`
 TARGET_ARCH=armhf
+TARGET_UBUNTU=15.04
 
 while [ "$1" != "" ]; do
     OPTION=`echo $1 | awk -F= '{print $1}'`
@@ -260,6 +263,12 @@ while [ "$1" != "" ]; do
             ;;
             --architecture)
                 TARGET_ARCH=$VALUE
+            ;;
+            --ubuntu)
+                TARGET_UBUNTU=$VALUE
+            ;;
+            --lxd-image)
+                LXD_IMAGE=$VALUE
             ;;
             *)
                 display_help
@@ -275,6 +284,10 @@ while [ "$1" != "" ]; do
         ;;
     esac
 done
+
+if [ -z "$LXD_IMAGE"] ; then
+    LXD_IMAGE=ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
+fi
 
 ARGUMENTS=$@
 if [ -z "$ARGUMENTS" ] ; then
