@@ -29,7 +29,7 @@
 # DEPENDENCIES:
 #  $ sudo apt install dpkg-dev android-tools-adb
 
-#set -e
+set -e
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -135,15 +135,13 @@ setup_lxd () {
 
 new_container () {
     # setup the building container
-    lxc info $LXD_CONTAINER > /dev/null 2>&1
-    CONTAINER_EXISTS=$?
-    if [ $CONTAINER_EXISTS -eq 0 ] ; then
+    if lxc info $LXD_CONTAINER > /dev/null 2>&1 ; then
         echo "${POSITIVE_COLOR}LXD container $LXD_CONTAINER already exists.${NC}"
         # FIXME: check if the container is already started
-        lxc start $LXD_CONTAINER
+        lxc start $LXD_CONTAINER || true
     else
         echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
-        lxc remote --protocol=simplestreams --public=true --accept-certificate=true add sdk https://sdk-images.canonical.com
+        lxc remote --protocol=simplestreams --public=true --accept-certificate=true add sdk https://sdk-images.canonical.com || true
         lxc init sdk:$LXD_IMAGE $LXD_CONTAINER
         printf "lxc.id_map = g $GROUPID `id --group` 1\nlxc.id_map = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
         lxc start $LXD_CONTAINER
@@ -152,10 +150,11 @@ new_container () {
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
         exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
     fi
-    echo "${POSITIVE_COLOR}Mounting $PWD in container.${NC}"
-    # FIXME: check if device exists already
-    # FIXME: better name than 'mymount'
-    lxc config device add $LXD_CONTAINER mymount disk source=$PWD path=$MOUNT_POINT
+
+    if ! lxc config device get $LXD_CONTAINER current_dir_mount disk ; then
+        echo "${POSITIVE_COLOR}Mounting $PWD in container.${NC}"
+        lxc config device add $LXD_CONTAINER current_dir_mount disk source=$PWD path=$MOUNT_POINT
+    fi
 }
 
 delete_container () {
@@ -172,28 +171,25 @@ install_dependencies () {
     exec_container [ -x debian/bileto_pre_release_hook ] && ./debian/bileto_pre_release_hook
 
     # install build dependencies in container
-    exec_container test -e $USERDIR/dependencies_installed
-    DEPS_INSTALLED=$?
-    if [ $DEPS_INSTALLED -ne 0 ] ; then
+    if ! exec_container test -e $USERDIR/dependencies_installed ; then
         echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"       
         exec_container_root apt install -y debhelper ccache
-        if [ $? -ne 0 ] ; then exit 1; fi;
 
         lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$USERDIR/
 
         exec_container cp debian/changelog debian/changelog.orig
         dch -v $NEW_PACKAGE_VERSION \'\'
-        exec_container dpkg-buildpackage -S -nc -I -Iobj-* -Idebian/tmp/*
-        BUILD_SOURCE_SUCCESS=$?
-        exec_container mv debian/changelog.orig debian/changelog
-        if [ $BUILD_SOURCE_SUCCESS -ne 0 ] ; then exit; fi;
+        if ! exec_container dpkg-buildpackage -S -nc -I -Iobj-* -Idebian/tmp/* ; then
+            exec_container mv debian/changelog.orig debian/changelog
+            exit 1
+        fi
         exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
         exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
         exec_container_root apt update
-        exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE
-        INSTALL_DEPS_SUCCESS=$?
-        exec_container mv debian/changelog.orig debian/changelog
-        if [ $INSTALL_DEPS_SUCCESS -ne 0 ] ; then exit; fi;
+        if ! exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE ; then
+            exec_container mv debian/changelog.orig debian/changelog
+            exit 1
+        fi
 
         # workaround various issues with qmake cross compilation
         exec_container_root "printf '/usr/lib/x86_64-linux-gnu/qt5/arm-linux-gnueabihf/bin\n/usr/lib/x86_64-linux-gnu/qt5/bin\n/usr/lib/x86_64-linux-gnu\n' > /usr/share/qtchooser/qt5-x86_64-linux-gnu-arm-linux-gnueabihf.conf"
@@ -211,15 +207,15 @@ install_dependencies () {
 build () {
     # build package in container
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
-    exec_container rm ../*.deb
-    exec_container rm debian/*.debhelper.log
+    exec_container rm -f ../*.deb
+    exec_container rm -f debian/*.debhelper.log
     exec_container cp debian/changelog debian/changelog.orig
 
     dch -v $NEW_PACKAGE_VERSION \'\'
-    exec_container DEB_BUILD_OPTIONS=\'parallel=$PARALLEL_BUILD nostrip\' dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc -I -Iobj-* -Idebian/tmp/* -b
-    BUILD_SUCCESS=$?
-    exec_container mv debian/changelog.orig debian/changelog
-    if [ $BUILD_SUCCESS -ne 0 ] ; then exit; fi;
+    if ! exec_container DEB_BUILD_OPTIONS=\'parallel=$PARALLEL_BUILD nostrip\' dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc -I -Iobj-* -Idebian/tmp/* -b ; then
+        exec_container mv debian/changelog.orig debian/changelog
+        exit 1
+    fi
 
     # transfer resulting debian packages to local machine
     echo "${POSITIVE_COLOR}Packing build artifacts in $DEB_TARBALL.${NC}"
@@ -245,7 +241,7 @@ deploy_to_device () {
     exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A mount -o remount,rw /
     exec_device mkdir -p /tmp/repo
     adb push $DEBS_TARBALL /tmp/repo/
-    exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm /tmp/repo/$DEBS_TARBALL"
+    exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm -f /tmp/repo/$DEBS_TARBALL"
 
     # install debian packages on device
     if [ ! -z "$PACKAGES_TO_DEPLOY" ] ; then
@@ -258,10 +254,8 @@ deploy_to_device () {
     else
         echo "${POSITIVE_COLOR}Upgrading packages already installed on device with newly built ones.${NC}"
         # create local deb repository on device
-        adb pull /tmp/repo/$CREATE_REPO_SCRIPT
-        REPO_SETUP=$?
-        rm $CREATE_REPO_SCRIPT
-        if [ $REPO_SETUP -ne 0 ] ; then
+        rm -f $CREATE_REPO_SCRIPT
+        if ! adb pull /tmp/repo/$CREATE_REPO_SCRIPT ; then
             adb push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
             exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
             exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A add-apt-repository -y "deb file:///tmp/repo/ /"

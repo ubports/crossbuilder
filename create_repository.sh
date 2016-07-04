@@ -31,9 +31,9 @@ apt-ftparchive \
     -o"APT::FTPArchive::Release::Codename=$where" release "$where" > "$where"/Release
 #    | sponge "$where"/Release
 
-rm -f "$where"/Release.gpg
-cp /var/lib/sbuild/apt-keys/sbuild-key.pub "$where"/repo-key.pub
-gpg --homedir /tmp \
-    --keyring /var/lib/sbuild/apt-keys/sbuild-key.pub \
-    --secret-keyring /var/lib/sbuild/apt-keys/sbuild-key.sec \
-    -abs -o "$where"/Release.gpg "$where"/Release
+#rm -f "$where"/Release.gpg
+#cp /var/lib/sbuild/apt-keys/sbuild-key.pub "$where"/repo-key.pub
+#gpg --homedir /tmp \
+#    --keyring /var/lib/sbuild/apt-keys/sbuild-key.pub \
+#    --secret-keyring /var/lib/sbuild/apt-keys/sbuild-key.sec \
+#    -abs -o "$where"/Release.gpg "$where"/Release
