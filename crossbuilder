@@ -16,7 +16,6 @@
  
 
 # TODO:
-# - support listing specific packages to deploy
 # - figure out the subuids for lxd
 # - script lxd on zfs install
 # - support building multiple projects that depend on each other
