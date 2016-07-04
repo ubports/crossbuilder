@@ -16,18 +16,19 @@
  
 
 # TODO:
-# - stop if source package build fails
 # - support listing specific packages to deploy
-# - support specifying target architecture
-# - support depending on non sdk lxd images
-# - support building multiple projects that depend on each other
-
-# - make it faster: bypass apt update
-# - implement a 'make install' version
 # - figure out the subuids for lxd
 # - script lxd on zfs install
+# - support building multiple projects that depend on each other
+# - implement a 'make install' version
+
+# - support specifying target architecture
+# - support depending on non sdk lxd images
+# - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
+
+#set -e
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -153,6 +154,9 @@ install_dependencies () {
         exec_container cp debian/changelog debian/changelog.orig
         dch -v $NEW_PACKAGE_VERSION \'\'
         exec_container dpkg-buildpackage -S -nc -I -Iobj-* -Idebian/tmp/*
+        BUILD_SOURCE_SUCCESS=$?
+        exec_container mv debian/changelog.orig debian/changelog
+        if [ $BUILD_SOURCE_SUCCESS -ne 0 ] ; then exit; fi;
         exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
         exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
         exec_container_root apt update
