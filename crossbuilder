@@ -16,11 +16,10 @@
  
 
 # TODO:
-# - figure out the subuids for lxd
-# - script lxd on zfs install
 # - support building multiple projects that depend on each other
 # - implement a 'make install' version
 
+# - support per project configuration; for example post deploy rules
 # - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
@@ -39,6 +38,7 @@ display_help () {
     echo "Usage: `basename $0` [options] [command]"
     echo "Available commands:"
     echo "    help          - Display this help."
+    echo "    setup         - Setup LXD. Needed before anything else."
     echo "    new           - Create a container to build in."
     echo "    delete        - Delete a container."
 #    echo "    list          - List existing containers."
@@ -99,6 +99,29 @@ variables () {
     CREATE_REPO_SCRIPT=create_repository.sh
     PARALLEL_BUILD=$((`nproc` + 1))
 }
+
+setup_lxd () {
+    read -p "Would you like to setup lxd with zfs in your home directory? " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]
+    then
+        echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
+        sudo apt-get install -y zfsutils-linux
+        LXD_POOL=~/zfs/lxd.img
+        echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
+        mkdir `dirname $LXD_POOL`
+        truncate -s 32G $LXD_POOL
+        sudo zpool create lxd $LXD_POOL
+        sudo lxd init --auto --storage-backend zfs --storage-pool lxd
+    else
+        sudo lxd init --auto
+    fi
+
+#    zpool import -d /path/to/directory/ -a
+    sudo usermod --add-subuids 1000-1000 root
+    sudo usermod --add-subgids 1000-1000 root
+}
+
 
 new_container () {
     # setup the building container
@@ -301,6 +324,9 @@ else
         help)
             display_help
             exit 0
+        ;;
+        setup)
+            setup_lxd
         ;;
         new)
             variables
