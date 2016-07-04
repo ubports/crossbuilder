@@ -112,6 +112,7 @@ setup_lxd () {
     then
         echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
         sudo apt-get install -y zfsutils-linux lxd
+        echo "${ERROR_COLOR}lxd and $0 will only work from this terminal until you logout and login again.${NC}"
         newgrp lxd
         LXD_POOL=~/zfs/lxd.img
         echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
@@ -119,12 +120,13 @@ setup_lxd () {
         truncate -s 32G $LXD_POOL
         sudo zpool create lxd $LXD_POOL
         sudo lxd init --auto --storage-backend zfs --storage-pool lxd
+        # add automatic mount of zfs pool upon boot
+#        sudo echo "zpool import -c /etc/zfs/zpool.cache -aN" | tee /etc/rc.local
     else
         sudo lxd init --auto
     fi
 
     sudo service lxd restart
-#    sudo zpool import -c /etc/zfs/zpool.cache -aN
     sudo usermod --add-subuids 1000-1000 root
     sudo usermod --add-subgids 1000-1000 root
 }
