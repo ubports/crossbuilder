@@ -19,14 +19,11 @@
 # - support workflow using apt-get source
 # - support building multiple projects that depend on each other
 # - implement a 'make install' version
-
 # - support per project configuration; for example post deploy rules
 # - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
 
-# DEPENDENCIES:
-#  $ sudo apt install dpkg-dev android-tools-adb
 
 set -e
 
@@ -112,7 +109,7 @@ setup_lxd () {
     then
         echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
         sudo apt-get install -y zfsutils-linux lxd
-        echo "${ERROR_COLOR}lxd and $0 will only work from this terminal until you logout and login again.${NC}"
+        echo "${ERROR_COLOR}lxd and `basename $0` will only work from this terminal until you logout and login again.${NC}"
         newgrp lxd
         LXD_POOL=~/zfs/lxd.img
         echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
@@ -270,6 +267,23 @@ deploy_to_device () {
         exec_device "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 1001' /etc/apt/preferences.d/extra-ppas.pref"
     fi;
 }
+
+MISSING_PACKAGES=
+if ! which dpkg > /dev/null ; then
+    MISSING_PACKAGES="dpkg"
+fi
+if ! which dpkg-parsechangelog > /dev/null ; then
+    MISSING_PACKAGES="dpkg-dev $MISSING_PACKAGES"
+fi
+if ! which adb > /dev/null ; then
+    MISSING_PACKAGES="android-tools-adb $MISSING_PACKAGES"
+fi
+
+if [ ! -z "$MISSING_PACKAGES" ] ; then
+    echo "${POSITIVE_COLOR}`basename $0` depends on $MISSING_PACKAGES. Installing:${NC}"
+    echo "sudo apt install $MISSING_PACKAGES"
+    sudo apt install $MISSING_PACKAGES
+fi
 
 
 HOST_ARCH=`dpkg --print-architecture`
