@@ -71,7 +71,7 @@ exec_container_root () {
 exec_container () {
     command="$@"
     #echo lxc exec $LXD_CONTAINER "$@"
-    lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; echo \$PATH; $command" $USERNAME
+    lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; $command" $USERNAME
 }
 
 variables () {
