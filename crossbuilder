@@ -102,7 +102,8 @@ variables () {
 }
 
 setup_lxd () {
-    echo -n "Would you like to setup lxd with zfs in your home directory? (y/n) "
+    echo "${POSITIVE_COLOR}Setting up LXD.${NC}"
+    echo -n "${POSITIVE_COLOR}Would you like to setup LXD with zfs in your home directory? (y/n) ${NC}"
     read REPLY
     echo
     if [ "$REPLY" = y ]
@@ -285,6 +286,12 @@ if [ ! -z "$MISSING_PACKAGES" ] ; then
     sudo apt install $MISSING_PACKAGES
 fi
 
+if ! which lxd > /dev/null ; then
+    echo "${POSITIVE_COLOR}`basename $0` uses LXD to download dependencies and build. Installing it now."
+    echo "sudo apt install lxd"
+    sudo apt install lxd
+    setup_lxd
+fi
 
 HOST_ARCH=`dpkg --print-architecture`
 TARGET_ARCH=armhf
