@@ -425,10 +425,13 @@ else
         ;;
         dependencies)
             variables
+            new_container
             install_dependencies
         ;;
         build)
             variables
+            new_container
+            install_dependencies
             build
         ;;
         clean)
