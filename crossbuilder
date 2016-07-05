@@ -204,7 +204,7 @@ install_dependencies () {
 
         exec_container cp debian/changelog debian/changelog.orig
         dch -v $NEW_PACKAGE_VERSION \'\'
-        if ! exec_container dpkg-buildpackage -S -nc -I -Iobj-* -Idebian/tmp/* ; then
+        if ! exec_container dpkg-source -I -Iobj-* -Idebian/tmp/* -b . ; then
             exec_container mv debian/changelog.orig debian/changelog
             exit 1
         fi
