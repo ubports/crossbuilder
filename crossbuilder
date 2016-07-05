@@ -379,7 +379,7 @@ if [ "$COMMAND" = "help" ] ; then
 fi
 
 
-if [ "$COMMAND" != "source" ] ; then
+if [ "$COMMAND" != "source" ] && [ "$COMMAND" != "setup" ] ; then
     if [ -z "$PACKAGE" ] ; then
         echo "${ERROR_COLOR}No debian/changelog found in the current directory.${NC}"
         echo "If the source code is not available it can be automatically downloaded from the repositories using the 'source' command." 
