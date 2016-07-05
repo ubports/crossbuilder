@@ -34,9 +34,10 @@ LIGHT_GREEN='\033[1;32m'
 NC='\033[0m'
 ERROR_COLOR=$LIGHT_RED
 POSITIVE_COLOR=$GREEN
+PROGRAM_NAME=`basename $0`
 
 display_help () {
-    echo "Usage: `basename $0` [options] [command]"
+    echo "Usage: $PROGRAM_NAME [options] [command]"
     echo "Available commands:"
     echo "    help          - Display this help."
     echo "    setup         - Setup LXD. Needed before anything else."
@@ -74,13 +75,10 @@ exec_container_root () {
 exec_container () {
     command="$@"
     #echo lxc exec $LXD_CONTAINER "$@"
-    lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; $command" $USERNAME
+    lxc exec $LXD_CONTAINER -- su -l -c "cd $SOURCE_PATH_CONTAINER; $command" $USERNAME
 }
 
 variables () {
-    PACKAGE=`dpkg-parsechangelog --show-field Source`
-    #PACKAGE=`basename $PWD` # TODO: support non deb
-    PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
     if [ -z "$PACKAGES_TO_DEPLOY" ] ; then
         NEW_PACKAGE_VERSION=$PACKAGE_VERSION"local~"`date +%s`
     else
@@ -93,11 +91,14 @@ variables () {
     USERID=150000
     GROUPID=150000
     USERDIR=/home/$USERNAME
-    MOUNT_POINT=$USERDIR/$PACKAGE
     SCRIPT_DIR=`dirname $0`
     DEBS_TARBALL=built_debs.tar
     CREATE_REPO_SCRIPT=create_repository.sh
     PARALLEL_BUILD=$((`nproc` + 1))
+    MOUNTED_DIRECTORY=$PWD
+    MOUNT_POINT=$USERDIR/$PACKAGE
+    SOURCE_PATH_LOCAL=$MOUNTED_DIRECTORY
+    SOURCE_PATH_CONTAINER=$MOUNT_POINT
 }
 
 setup_lxd () {
@@ -109,7 +110,7 @@ setup_lxd () {
     then
         echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
         sudo apt-get install -y zfsutils-linux lxd
-        echo "${ERROR_COLOR}lxd and `basename $0` will only work from this terminal until you logout and login again.${NC}"
+        echo "${ERROR_COLOR}lxd and $PROGRAM_NAME will only work from this terminal until you logout and login again.${NC}"
         newgrp lxd
         LXD_POOL=~/zfs/lxd.img
         echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
@@ -148,8 +149,8 @@ new_container () {
     fi
 
     if ! lxc config device get $LXD_CONTAINER current_dir_mount disk ; then
-        echo "${POSITIVE_COLOR}Mounting $PWD in container.${NC}"
-        lxc config device add $LXD_CONTAINER current_dir_mount disk source=$PWD path=$MOUNT_POINT
+        echo "${POSITIVE_COLOR}Mounting $MOUNTED_DIRECTORY in container.${NC}"
+        lxc config device add $LXD_CONTAINER current_dir_mount disk source=$MOUNTED_DIRECTORY path=$MOUNT_POINT
     fi
 }
 
@@ -280,13 +281,13 @@ if ! which adb > /dev/null ; then
 fi
 
 if [ ! -z "$MISSING_PACKAGES" ] ; then
-    echo "${POSITIVE_COLOR}`basename $0` depends on $MISSING_PACKAGES. Installing:${NC}"
+    echo "${POSITIVE_COLOR}$PROGRAM_NAME depends on $MISSING_PACKAGES. Installing:${NC}"
     echo "sudo apt install $MISSING_PACKAGES"
     sudo apt install $MISSING_PACKAGES
 fi
 
 if ! which lxd > /dev/null ; then
-    echo "${POSITIVE_COLOR}`basename $0` uses LXD to download dependencies and build. Installing it now."
+    echo "${POSITIVE_COLOR}$PROGRAM_NAME uses LXD to download dependencies and build. Installing it now."
     echo "sudo apt install lxd"
     sudo apt install lxd
     setup_lxd
@@ -337,6 +338,17 @@ if [ -z "$LXD_IMAGE"] ; then
     LXD_IMAGE=ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
 fi
 
+if test -e debian/changelog ; then
+    PACKAGE=`dpkg-parsechangelog --show-field Source`
+    PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
+fi
+
+COMMAND=$1
+if [ "$COMMAND" = "help" ] ; then
+    display_help
+    exit 0
+fi
+
 ARGUMENTS=$@
 if [ -z "$ARGUMENTS" ] ; then
     variables
@@ -346,12 +358,7 @@ if [ -z "$ARGUMENTS" ] ; then
     build
     deploy_to_device
 else
-    COMMAND=$1
     case "$COMMAND" in
-        help)
-            display_help
-            exit 0
-        ;;
         setup)
             setup_lxd
         ;;
