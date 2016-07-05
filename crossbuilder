@@ -217,6 +217,8 @@ install_dependencies () {
             exit 1
         fi
 
+        exec_container mv debian/changelog.orig debian/changelog
+
         # workaround various issues with qmake cross compilation
         exec_container_root "printf '/usr/lib/x86_64-linux-gnu/qt5/arm-linux-gnueabihf/bin\n/usr/lib/x86_64-linux-gnu/qt5/bin\n/usr/lib/x86_64-linux-gnu\n' > /usr/share/qtchooser/qt5-x86_64-linux-gnu-arm-linux-gnueabihf.conf"
         exec_container_root ln -s ../../../share/qtchooser/qt5-x86_64-linux-gnu-arm-linux-gnueabihf.conf /usr/lib/x86_64-linux-gnu/qtchooser/qt5-arm-linux-gnueabihf.conf
@@ -242,6 +244,7 @@ build () {
         exec_container mv debian/changelog.orig debian/changelog
         exit 1
     fi
+    exec_container mv debian/changelog.orig debian/changelog
 
     # transfer resulting debian packages to local machine
     echo "${POSITIVE_COLOR}Packing build artifacts in $DEB_TARBALL.${NC}"
