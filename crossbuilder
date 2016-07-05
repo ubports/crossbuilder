@@ -17,8 +17,6 @@
 
 # TODO:
 # - support Debian package format 3.0 (quilt)
-# - make shell switch to user instead of root; perhaps add it to sudoers
-# - MAYBE: make shell depend on new; make dependencies depend on new; make build depend on new and dependencies
 # - document source command parameter
 # - make new/delete/shell accept 'package name' parameter
 # - support building multiple projects that depend on each other
@@ -153,7 +151,11 @@ new_container () {
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
         exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
-    fi
+        exec_container_root apt install -y sudo
+        exec_container_root adduser $USERNAME sudo
+        # set empty password for the user
+        exec_container_root passwd --delete $USERNAME
+        fi
 
     if ! lxc config device get $LXD_CONTAINER current_dir_mount disk ; then
         echo "${POSITIVE_COLOR}Mounting $MOUNTED_DIRECTORY in container.${NC}"
@@ -168,7 +170,7 @@ delete_container () {
 
 shell_container () {
     echo "${POSITIVE_COLOR}Entering shell in LXD container $LXD_CONTAINER.${NC}"
-    lxc exec $LXD_CONTAINER bash
+    lxc exec $LXD_CONTAINER -- su --login $USERNAME
 }
 
 get_source_package () {
@@ -410,6 +412,7 @@ else
         ;;
         shell)
             variables
+            new_container
             shell_container
         ;;
         source)
