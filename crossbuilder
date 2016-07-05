@@ -90,6 +90,8 @@ variables () {
     fi;
     LXD_IMAGE_NO_DOT=$(echo $LXD_IMAGE | sed "s/\./-/")
     LXD_CONTAINER=builder-$PACKAGE-$LXD_IMAGE_NO_DOT
+    # LXD container name can only have HOST_NAME_MAX characters
+    LXD_CONTAINER=$(echo $LXD_CONTAINER | cut -c 1-$((`getconf HOST_NAME_MAX` - 1)))
     USERNAME=`id --user --name`
     GROUPNAME=$USERNAME
     USERID=150000
@@ -178,7 +180,7 @@ get_source_package () {
     if exec_container_root "grep '#.*deb-src' $OVERLAY_APT" ; then
         exec_container_root "sed -i 's/#.*deb-src/deb-src/' $OVERLAY_APT"
         # FIXME: without the sleep apt update fails for lack of internet connection
-        sleep 2
+        sleep 3
         exec_container_root apt update
     fi
     lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; apt-get source $PACKAGE" $USERNAME
