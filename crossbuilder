@@ -151,7 +151,7 @@ new_container () {
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
         exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
-        exec_container_root apt install -y sudo
+        exec_container_root apt install -y sudo debhelper ccache
         exec_container_root adduser $USERNAME sudo
         # set empty password for the user
         exec_container_root passwd --delete $USERNAME
@@ -201,8 +201,6 @@ install_dependencies () {
     # install build dependencies in container
     if ! exec_container test -e $USERDIR/dependencies_installed ; then
         echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"       
-        exec_container_root apt install -y debhelper ccache
-
         lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$USERDIR/
 
         exec_container cp debian/changelog debian/changelog.orig
