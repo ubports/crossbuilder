@@ -16,6 +16,7 @@
  
 
 # TODO:
+# - support Debian package format 3.0 (quilt)
 # - make shell switch to user instead of root; perhaps add it to sudoers
 # - MAYBE: make shell depend on new; make dependencies depend on new; make build depend on new and dependencies
 # - document source command parameter
