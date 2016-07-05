@@ -129,9 +129,9 @@ setup_lxd () {
         sudo lxd init --auto
     fi
 
-    sudo service lxd restart
     sudo usermod --add-subuids 1000-1000 root
     sudo usermod --add-subgids 1000-1000 root
+    sudo service lxd restart
 }
 
 
