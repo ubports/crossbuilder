@@ -151,7 +151,7 @@ new_container () {
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
         exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
-        exec_container_root apt install -y sudo debhelper ccache
+        exec_container_root apt install -y sudo debhelper ccache software-properties-common
         exec_container_root adduser $USERNAME sudo
         # set empty password for the user
         exec_container_root passwd --delete $USERNAME
