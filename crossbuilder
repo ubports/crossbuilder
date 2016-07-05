@@ -438,6 +438,9 @@ else
         ;;
         deploy)
             variables
+            new_container
+            install_dependencies
+            build
             deploy_to_device
         ;;
         *)
