@@ -195,6 +195,14 @@ get_source_package () {
     echo "${POSITIVE_COLOR}Source code for $PACKAGE is now available in $PACKAGE/.${NC}"
 }
 
+backup_changelog () {
+    exec_container cp debian/changelog /tmp/$PACKAGE-changelog.orig
+}
+
+restore_changelog () {
+    exec_container mv /tmp/$PACKAGE-changelog.orig debian/changelog
+}
+
 install_dependencies () {
     exec_container [ -x debian/bileto_pre_release_hook ] && ./debian/bileto_pre_release_hook
 
@@ -202,23 +210,22 @@ install_dependencies () {
     if ! exec_container test -e $USERDIR/dependencies_installed ; then
         echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"       
         lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$USERDIR/
-
-        exec_container cp debian/changelog debian/changelog.orig
+    
+        backup_changelog
         dch -v $NEW_PACKAGE_VERSION \'\'
-        # FIXME: should clean before generating the source package
-        if ! exec_container dpkg-source -I -Iobj-* -Idebian/tmp/* -b . ; then
-            exec_container mv debian/changelog.orig debian/changelog
+        if ! exec_container dpkg-buildpackage -S -d -I -Iobj-* -Idebian/tmp/* ; then
+            restore_changelog
             exit 1
         fi
         exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
         exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
         exec_container_root apt-get update --allow-unauthenticated
         if ! exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE ; then
-            exec_container mv debian/changelog.orig debian/changelog
+            restore_changelog
             exit 1
         fi
 
-        exec_container mv debian/changelog.orig debian/changelog
+        restore_changelog
 
         # workaround various issues with qmake cross compilation
         exec_container_root "printf '/usr/lib/x86_64-linux-gnu/qt5/arm-linux-gnueabihf/bin\n/usr/lib/x86_64-linux-gnu/qt5/bin\n/usr/lib/x86_64-linux-gnu\n' > /usr/share/qtchooser/qt5-x86_64-linux-gnu-arm-linux-gnueabihf.conf"
@@ -238,14 +245,14 @@ build () {
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
     exec_container rm -f ../*.deb
     exec_container rm -f debian/*.debhelper.log
-    exec_container cp debian/changelog debian/changelog.orig
+    backup_changelog
 
     dch -v $NEW_PACKAGE_VERSION \'\'
     if ! exec_container DEB_BUILD_OPTIONS=\'parallel=$PARALLEL_BUILD nostrip\' dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc -I -Iobj-* -Idebian/tmp/* -b ; then
-        exec_container mv debian/changelog.orig debian/changelog
+        restore_changelog
         exit 1
     fi
-    exec_container mv debian/changelog.orig debian/changelog
+    restore_changelog
 
     # transfer resulting debian packages to local machine
     echo "${POSITIVE_COLOR}Packing build artifacts in $DEB_TARBALL.${NC}"
