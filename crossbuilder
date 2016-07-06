@@ -16,6 +16,7 @@
  
 
 # TODO:
+# - fix case when user has LXD setup already
 # - support Debian package format 3.0 (quilt)
 # - document source command parameter
 # - make new/delete/shell accept 'package name' parameter
