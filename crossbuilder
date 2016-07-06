@@ -244,8 +244,8 @@ install_dependencies () {
 build () {
     # build package in container
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
-    exec_container rm -f ../*.deb
-    exec_container rm -f debian/*.debhelper.log
+    exec_container "rm -f ../*.deb"
+    exec_container "rm -f debian/*.debhelper.log"
     backup_changelog
 
     dch -v $NEW_PACKAGE_VERSION \'\'
