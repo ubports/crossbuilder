@@ -17,6 +17,8 @@
 
 # TODO:
 # - fix case when user has LXD setup already
+# - check device password is correct
+
 # - support Debian package format 3.0 (quilt)
 # - document source command parameter
 # - make new/delete/shell accept 'package name' parameter
@@ -26,6 +28,7 @@
 # - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
+# - check device has internet connection
 
 
 set -e
