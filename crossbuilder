@@ -116,8 +116,6 @@ setup_lxd () {
     then
         echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
         sudo apt-get install -y zfsutils-linux lxd
-        echo "${ERROR_COLOR}lxd and $PROGRAM_NAME will only work from this terminal until you logout and login again.${NC}"
-        newgrp lxd
         LXD_POOL=~/zfs/lxd.img
         echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
         mkdir `dirname $LXD_POOL`
@@ -133,6 +131,8 @@ setup_lxd () {
     sudo usermod --add-subuids 1000-1000 root
     sudo usermod --add-subgids 1000-1000 root
     sudo service lxd restart
+    echo "${ERROR_COLOR}LXD and $PROGRAM_NAME will only work from this terminal until you logout and login again.${NC}"
+    newgrp lxd
 }
 
 
