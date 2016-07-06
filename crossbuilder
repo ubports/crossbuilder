@@ -18,6 +18,7 @@
 # TODO:
 # - fix case when user has LXD setup already
 # - check device password is correct
+# - handle CTRL-C gracefully
 
 # - support Debian package format 3.0 (quilt)
 # - document source command parameter
@@ -224,7 +225,7 @@ install_dependencies () {
         exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
         exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
         exec_container_root apt-get update --allow-unauthenticated
-        if ! exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
+        if ! exec_container_root apt-get build-dep -y --force-yes -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
             restore_changelog
             exit 1
         fi
