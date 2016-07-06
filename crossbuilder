@@ -224,6 +224,7 @@ install_dependencies () {
         fi
         exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
         exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
+        exec_container_root "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000' | sudo tee /etc/apt/preferences.d/localrepo.pref"
         exec_container_root apt-get update --allow-unauthenticated
         if ! exec_container_root apt-get build-dep -y --force-yes -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
             restore_changelog
