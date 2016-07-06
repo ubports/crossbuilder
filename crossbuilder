@@ -220,7 +220,7 @@ install_dependencies () {
         exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
         exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
         exec_container_root apt-get update --allow-unauthenticated
-        if ! exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE ; then
+        if ! exec_container_root apt-get build-dep -y -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
             restore_changelog
             exit 1
         fi
