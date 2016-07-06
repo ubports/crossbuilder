@@ -123,7 +123,7 @@ setup_lxd () {
         sudo zpool create lxd $LXD_POOL
         sudo lxd init --auto --storage-backend zfs --storage-pool lxd
         # add automatic mount of zfs pool upon boot
-#        sudo echo "zpool import -c /etc/zfs/zpool.cache -aN" | tee /etc/rc.local
+        sudo echo "zpool import -c /etc/zfs/zpool.cache -aN" | tee /etc/rc.local
     else
         sudo lxd init --auto
     fi
