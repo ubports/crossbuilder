@@ -17,7 +17,6 @@
 
 # TODO:
 # - document default behaviour; document first usage
-# - fix case when user has LXD setup already
 # - handle CTRL-C gracefully
 
 # - support Debian package format 3.0 (quilt)
