@@ -16,6 +16,7 @@
  
 
 # TODO:
+# - document default behaviour; document first usage
 # - fix case when user has LXD setup already
 # - check device password is correct
 # - handle CTRL-C gracefully
