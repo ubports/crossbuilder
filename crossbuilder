@@ -300,7 +300,7 @@ build () {
     restore_changelog
 
     # transfer resulting debian packages to local machine
-    echo "${POSITIVE_COLOR}Packing build artifacts in $DEB_TARBALL.${NC}"
+    echo "${POSITIVE_COLOR}Packing build artifacts in $DEBS_TARBALL.${NC}"
     exec_container "tar cf ../$DEBS_TARBALL ../*.deb"
     lxc file pull $LXD_CONTAINER$USERDIR/$DEBS_TARBALL .
 }
