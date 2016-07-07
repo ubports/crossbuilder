@@ -19,6 +19,7 @@
 # - document default behaviour; document first usage
 # - handle CTRL-C gracefully
 
+# - dependencies_installed breaks when new deps are needed
 # - support Debian package format 3.0 (quilt)
 # - document source command parameter
 # - make new/delete/shell accept 'package name' parameter
@@ -29,6 +30,7 @@
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
 # - check device has internet connection
+# - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 
 
 set -e
@@ -533,6 +535,7 @@ else
             check_changelog_or_package
             variables
             new_container
+            exec_container rm -f $USERDIR/dependencies_installed
             install_dependencies
         ;;
         build)
