@@ -398,6 +398,7 @@ if ! which lxd > /dev/null ; then
     then
         echo "sudo apt-get install -y lxd"
         sudo apt-get install -y lxd
+        sudo dpkg-reconfigure -p medium lxd
         setup_lxd
         ensure_lxd_subuid
         echo "${ERROR_COLOR}LXD is now setup but will only work after you restart your computer.${NC}"
