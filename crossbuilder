@@ -18,7 +18,6 @@
 # TODO:
 # - document default behaviour; document first usage
 # - fix case when user has LXD setup already
-# - check device password is correct
 # - handle CTRL-C gracefully
 
 # - support Debian package format 3.0 (quilt)
@@ -278,10 +277,22 @@ deploy_to_device () {
         echo "${ERROR_COLOR}No device connected to deploy to.${NC}"
         exit 1
     fi;
-    echo "${POSITIVE_COLOR}Transferring build artifacts to device.${NC}"
-    # tranfer debian packages to device
+
+    # setup sudo on device
     exec_device "printf '#\041/bin/sh\necho $DEVICE_PASSWORD' >/tmp/askpass.sh"
     exec_device chmod +x /tmp/askpass.sh
+
+    # check password is correct
+    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A touch /tmp/password_ok
+    if adb pull /tmp/password_ok ; then
+       exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A rm -f /tmp/password_ok
+    else
+        echo "${ERROR_COLOR}Device password incorrect. Use --password=PASSWORD to pass the correct one.${NC}"
+        exit 1
+    fi
+
+    echo "${POSITIVE_COLOR}Transferring build artifacts to device.${NC}"
+    # tranfer debian packages to device
     exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A mount -o remount,rw /
     exec_device mkdir -p /tmp/repo
     adb push $DEBS_TARBALL /tmp/repo/
