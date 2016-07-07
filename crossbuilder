@@ -108,6 +108,7 @@ variables () {
     MOUNT_POINT=$USERDIR/$PACKAGE
     SOURCE_PATH_LOCAL=$MOUNTED_DIRECTORY
     SOURCE_PATH_CONTAINER=$MOUNT_POINT
+    POST_DEPLOY_SCRIPT=crossbuilder_post
 }
 
 check_lxd_accessible () {
@@ -370,6 +371,12 @@ deploy_to_device () {
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade --yes --force-yes
         exec_device "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 1001' /etc/apt/preferences.d/extra-ppas.pref"
     fi;
+
+    # execute post deploy
+    if test -e $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT ; then
+        adb push $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT /tmp
+        exec_device sh /tmp/$POST_DEPLOY_SCRIPT
+    fi
 }
 
 MISSING_PACKAGES=
