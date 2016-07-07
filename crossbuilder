@@ -113,7 +113,7 @@ variables () {
 
 check_lxd_accessible () {
     if ! lxc info > /dev/null 2>&1 ; then
-        echo "${ERROR_COLOR}Please logout and login again then run '$PROGRAM_NAME setup-lxd'.${NC}"
+        echo "${ERROR_COLOR}LXD was installed but is not accessible. Please restart your computer.${NC}"
         exit 1
     fi
 }
@@ -156,12 +156,6 @@ ensure_lxd_subuid () {
 }
 
 setup_lxd () {
-    if lxd_has_image_or_container ; then
-        echo "${POSITIVE_COLOR}You are already using LXD. To set it up again you must delete "
-        echo " all images and containers listed by 'lxc list' and 'lxc image list'."
-        return 0
-    fi
-
     echo "${POSITIVE_COLOR}Setting up LXD.${NC}"
     echo -n "${POSITIVE_COLOR}Would you like to setup LXD with ZFS in your home directory? (y/n) \n${NC}"
     echo -n "This is recommended for faster operation, and also in case there is not enough "
@@ -171,7 +165,7 @@ setup_lxd () {
     if [ "$REPLY" = y ]
     then
         echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
-        sudo apt-get install -y zfsutils-linux lxd
+        sudo apt-get install -y zfsutils-linux
         LXD_POOL=~/zfs/lxd.img
         echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
         mkdir `dirname $LXD_POOL`
@@ -403,7 +397,12 @@ if ! which lxd > /dev/null ; then
     echo
     if [ "$REPLY" = y ]
     then
+        echo "sudo apt-get install -y lxd"
         sudo apt-get install -y lxd
+        setup_lxd
+        ensure_lxd_subuid
+        echo "${ERROR_COLOR}LXD is now setup but will only work after you restart your computer.${NC}"
+        exit 0
     else
         echo "${ERROR_COLOR}$PROGRAM_NAME will not work without LXD. Bye.$OPTION${NC}"
         exit 1
@@ -490,6 +489,11 @@ if [ -z "$ARGUMENTS" ] ; then
 else
     case "$COMMAND" in
         setup-lxd)
+            if lxd_has_image_or_container ; then
+                echo "${POSITIVE_COLOR}You are already using LXD. To set it up again you must delete "
+                echo "all images and containers listed by 'lxc list' and 'lxc image list'.${NC}"
+                return 0
+            fi
             setup_lxd
         ;;
         new)
