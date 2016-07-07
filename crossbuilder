@@ -374,6 +374,7 @@ deploy_to_device () {
 
     # execute post deploy
     if test -e $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT ; then
+        echo "${POSITIVE_COLOR}Execute project specific post deploy script ($POST_DEPLOY_SCRIPT).${NC}"
         adb push $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT /tmp
         exec_device sh /tmp/$POST_DEPLOY_SCRIPT
     fi
