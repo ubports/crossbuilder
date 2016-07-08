@@ -296,7 +296,7 @@ build () {
     backup_changelog
 
     dch -v $NEW_PACKAGE_VERSION \'\'
-    if ! exec_container DEB_BUILD_OPTIONS=\'parallel=$PARALLEL_BUILD nostrip\' dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc -I -Iobj-* -Idebian/tmp/* -b ; then
+    if ! exec_container DEB_BUILD_OPTIONS=\'parallel=$PARALLEL_BUILD nostrip nocheck\' dpkg-buildpackage -a$TARGET_ARCH -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b ; then
         restore_changelog
         exit 1
     fi
