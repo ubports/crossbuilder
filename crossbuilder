@@ -285,7 +285,7 @@ install_dependencies () {
         # workaround various issues with qmake cross compilation
         # FIXME: this should be integrated in the binary package qt5-qmake-$TARGET_FARCH
         # from source package qtbase-opensource-src
-        if exec_container test -d /usr/share/qtchooser ; then
+        if exec_container test -e /usr/bin/qt5-qmake-$TARGET_FARCH ; then
             exec_container_root "printf '/usr/lib/$HOST_FARCH/qt5/$TARGET_FARCH/bin\n/usr/lib/$HOST_FARCH/qt5/bin\n/usr/lib/$HOST_FARCH\n' > /usr/share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf"
             exec_container_root mkdir -p /usr/lib/$HOST_FARCH/qtchooser
             exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/qt5-$TARGET_FARCH.conf
