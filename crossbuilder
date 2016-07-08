@@ -21,7 +21,6 @@
 # TODO:
 # BEFORE WIDESPREAD USAGE
 # - document default behaviour; document first usage
-# - dependencies_installed breaks when new deps are needed
 # - check device has internet connection
 # - phone's local repo in /tmp is deleted upon reboot but apt still knows about it
 # - handle CTRL-C gracefully
