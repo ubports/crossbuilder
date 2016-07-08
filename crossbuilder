@@ -21,7 +21,6 @@
 # TODO:
 # BEFORE WIDESPREAD USAGE
 # - document default behaviour; document first usage
-# - should delete previously generated packages when building new ones
 # - dependencies_installed breaks when new deps are needed
 # - check device has internet connection
 # - phone's local repo in /tmp is deleted upon reboot but apt still knows about it
@@ -327,6 +326,7 @@ build () {
     echo "${POSITIVE_COLOR}Packing build artifacts in $DEBS_TARBALL.${NC}"
     exec_container "tar cf ../$DEBS_TARBALL ../*.deb"
     lxc file pull $LXD_CONTAINER$USERDIR/$DEBS_TARBALL .
+    exec_container "rm ../*.deb ../*.changes ../$DEBS_TARBALL"
 }
 
 clean () {
