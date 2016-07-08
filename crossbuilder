@@ -21,7 +21,6 @@
 # TODO:
 # BEFORE WIDESPREAD USAGE
 # - document default behaviour; document first usage
-# - phone's local repo in /tmp is deleted upon reboot but apt still knows about it
 # - handle CTRL-C gracefully
 # - should fail and explain why if option is passed after command
 
@@ -36,6 +35,7 @@
 # - support building multiple projects that depend on each other
 
 # LATER
+# - phone's local repo in /tmp is deleted upon reboot but apt still knows about it
 # - detect architecture of connected device
 # - make it easy to build for multiple target archs simultaneously
 # - implement a 'make install' version
