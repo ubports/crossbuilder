@@ -21,7 +21,6 @@
 # TODO:
 # BEFORE WIDESPREAD USAGE
 # - document default behaviour; document first usage
-# - check device has internet connection
 # - phone's local repo in /tmp is deleted upon reboot but apt still knows about it
 # - handle CTRL-C gracefully
 # - should fail and explain why if option is passed after command
@@ -333,6 +332,21 @@ clean () {
     debian/rules clean
 }
 
+check_for_device_network() {
+    NETWORK_UP=0
+    for i in `seq 1 5`
+    do
+        if adb shell ping -c1 -w1 google.com | grep PING > /dev/null 2>&1 ; then
+            NETWORK_UP=1
+            break
+        fi
+    done
+    if [ $NETWORK_UP -ne 1 ] ; then
+        echo "${ERROR_COLOR}Device connected is not connected to the Internet.${NC}"
+        exit 1
+    fi
+}
+
 deploy_to_device () {
     DEVICE_STATE=`adb get-state`
     if [ "$DEVICE_STATE" != "device" ] ; then
@@ -375,6 +389,7 @@ deploy_to_device () {
         done
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i $DPKG_ARGS 
     else
+        check_for_device_network
         echo "${POSITIVE_COLOR}Upgrading packages already installed on device with newly built ones.${NC}"
         # create local deb repository on device
         rm -f $CREATE_REPO_SCRIPT
