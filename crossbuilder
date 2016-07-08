@@ -19,7 +19,9 @@
 # - document default behaviour; document first usage
 # - handle CTRL-C gracefully
 
+# - should delete previously generated packages when building new ones
 # - dependencies_installed breaks when new deps are needed
+# - should fail and explain why if option is passed after command
 # - support Debian package format 3.0 (quilt)
 # - document source command parameter
 # - make new/delete/shell accept 'package name' parameter
@@ -31,7 +33,10 @@
 # - option to cleanup device (undeploy)
 # - check device has internet connection
 # - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
-
+# - phone's local repo in /tmp is deleted upon reboot but apt still knows about it
+# - make it easy to build for multiple target archs simultaneously
+# - figure out an easy way to update the containers
+# - detect architecture of connected device
 
 set -e
 
