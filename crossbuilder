@@ -265,7 +265,7 @@ install_dependencies () {
     
         backup_changelog
         dch -v $NEW_PACKAGE_VERSION \'\'
-        if ! exec_container dpkg-buildpackage -S -nc -d -I -Iobj-* -Idebian/tmp/* ; then
+        if ! exec_container dpkg-buildpackage -S -nc -d -I -Iobj-* -Idebian/tmp/* -I.bzr* ; then
             restore_changelog
             exit 1
         fi
