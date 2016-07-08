@@ -16,27 +16,32 @@
  
 
 # TODO:
+# BEFORE WIDESPREAD USAGE
 # - document default behaviour; document first usage
-# - handle CTRL-C gracefully
-
 # - should delete previously generated packages when building new ones
 # - dependencies_installed breaks when new deps are needed
+# - check device has internet connection
+# - phone's local repo in /tmp is deleted upon reboot but apt still knows about it
+# - handle CTRL-C gracefully
 # - should fail and explain why if option is passed after command
+
+# PROJECT CUSTOMISATION - FASTER
+# - support per project configuration; for example post deploy rules
+# - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
+
+# BETTER THAN SBUILD
 # - support Debian package format 3.0 (quilt)
 # - document source command parameter
 # - make new/delete/shell accept 'package name' parameter
 # - support building multiple projects that depend on each other
+
+# LATER
+# - detect architecture of connected device
+# - make it easy to build for multiple target archs simultaneously
 # - implement a 'make install' version
-# - support per project configuration; for example post deploy rules
 # - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
-# - check device has internet connection
-# - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
-# - phone's local repo in /tmp is deleted upon reboot but apt still knows about it
-# - make it easy to build for multiple target archs simultaneously
-# - figure out an easy way to update the containers
-# - detect architecture of connected device
 
 set -e
 
