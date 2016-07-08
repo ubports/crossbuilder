@@ -196,7 +196,7 @@ new_container () {
     else
         echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         lxc remote --protocol=simplestreams --public=true --accept-certificate=true add sdk https://sdk-images.canonical.com || true
-        lxc init sdk:$LXD_IMAGE $LXD_CONTAINER
+        lxc init $LXD_IMAGE $LXD_CONTAINER
         printf "lxc.id_map = g $GROUPID `id --group` 1\nlxc.id_map = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
         lxc start $LXD_CONTAINER
         lxc exec --env GROUPID=$GROUPID --env GROUPNAME=$GROUPNAME $LXD_CONTAINER -- addgroup --gid $GROUPID $GROUPNAME
@@ -469,8 +469,8 @@ while [ "$1" != "" ]; do
     esac
 done
 
-if [ -z "$LXD_IMAGE"] ; then
-    LXD_IMAGE=ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
+if [ -z "$LXD_IMAGE" ] ; then
+    LXD_IMAGE=sdk:ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
 fi
 
 if test -e debian/changelog ; then
