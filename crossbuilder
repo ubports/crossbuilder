@@ -21,16 +21,16 @@
 # TODO:
 # BETTER THAN SBUILD
 # - support Debian package format 3.0 (quilt)
-# - document source command parameter
-# - make new/delete/shell accept 'package name' parameter
-# - support building multiple projects that depend on each other
+# - document source command PACKAGE parameter
+# - make new/delete/shell/dependencies/build/clean/deploy accept 'package name' parameter
+# - support building multiple projects that depend on each other: crossbuilder PACKAGE1 PACKAGE2 PACKAGE3
 
 # PROJECT CUSTOMISATION - FASTER
 # - support per project configuration; for example post deploy rules
 # - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 
 # LATER
-# - phone's local repo in /tmp is deleted upon reboot but apt still knows about it
+# - devices's local apt repository in /tmp is deleted upon reboot but apt still knows about it
 # - make it easy to build for multiple target archs simultaneously
 # - implement a 'make install' version
 # - make it faster: bypass apt update
