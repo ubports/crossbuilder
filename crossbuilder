@@ -251,6 +251,10 @@ get_source_package () {
     mv $PACKAGE-*/.[!.]* . || true
     rmdir $PACKAGE-*
     echo "${POSITIVE_COLOR}Source code for $PACKAGE is now available in $PACKAGE/.${NC}"
+    VCS=$(grep -i vcs debian/control | grep --invert-match Vcs-Browser)
+    if [ "$VCS" != "" ] ; then
+        echo "${POSITIVE_COLOR}'$PACKAGE' packaging is versioned and available at $VCS${NC}"
+    fi
 }
 
 backup_changelog () {
