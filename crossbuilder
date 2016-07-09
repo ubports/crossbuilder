@@ -22,7 +22,6 @@
 # BEFORE WIDESPREAD USAGE
 # - document default behaviour; document first usage
 # - handle CTRL-C gracefully
-# - should fail and explain why if option is passed after command
 
 # PROJECT CUSTOMISATION - FASTER
 # - support per project configuration; for example post deploy rules
@@ -523,6 +522,24 @@ check_changelog_or_package () {
     fi
 }
 
+check_command_parameter_count() {
+    MIN_PARAMETERS=$1
+    MAX_PARAMETERS=$2
+    COUNT=$(echo $PARAMETERS | wc -w)
+    if [ $COUNT -lt $MIN_PARAMETERS ] ; then
+        display_help
+        echo ""
+        echo "${ERROR_COLOR}Command '$COMMAND' requires a minimum of $MIN_PARAMETERS parameters. $COUNT passed.${NC}"
+        exit 1
+    fi
+    if [ $COUNT -gt $MAX_PARAMETERS ] ; then
+        display_help
+        echo ""
+        echo "${ERROR_COLOR}Command '$COMMAND' accepts at most $MAX_PARAMETERS parameters. $COUNT passed.${NC}"
+        exit 1
+    fi
+}
+
 ARGUMENTS=$@
 if [ -z "$ARGUMENTS" ] ; then
     check_changelog_or_package
@@ -533,6 +550,8 @@ if [ -z "$ARGUMENTS" ] ; then
     build
     deploy_to_device
 else
+    shift
+    PARAMETERS=$@
     case "$COMMAND" in
         setup-lxd)
             if lxd_has_image_or_container ; then
@@ -543,16 +562,19 @@ else
             setup_lxd
         ;;
         new)
+            check_command_parameter_count 0 0
             check_changelog_or_package
             variables
             new_container
         ;;
         delete)
+            check_command_parameter_count 0 0
             check_changelog_or_package
             variables
             delete_container
         ;;
         shell)
+            check_command_parameter_count 0 0
             check_changelog_or_package
             variables
             new_container
@@ -561,12 +583,14 @@ else
         source)
             PACKAGE=$2
             if [ -z "$PACKAGE" ] ; then
-                echo "${ERROR_COLOR}source requires a package name: $PROGRAM_NAME source PACKAGE_NAME${NC}"
+                echo "${ERROR_COLOR}Command 'source' requires a package name: $PROGRAM_NAME source PACKAGE_NAME${NC}"
                 exit 1
             fi
+            check_command_parameter_count 1 1
             get_source_package
         ;;
         dependencies)
+            check_command_parameter_count 0 0
             check_changelog_or_package
             variables
             new_container
@@ -574,6 +598,7 @@ else
             install_dependencies
         ;;
         build)
+            check_command_parameter_count 0 0
             check_changelog_or_package
             variables
             new_container
@@ -581,11 +606,13 @@ else
             build
         ;;
         clean)
+            check_command_parameter_count 0 0
             check_changelog_or_package
             variables
             clean
         ;;
         deploy)
+            check_command_parameter_count 0 0
             check_changelog_or_package
             variables
             deploy_to_device
