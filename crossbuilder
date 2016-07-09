@@ -57,7 +57,7 @@ display_help () {
     echo ""
     echo "Available commands:"
     echo "    help          - Display this help."
-    echo "    setup-lxd     - Setup LXD. Needed before anything else."
+    echo "    setup-lxd     - Setup LXD."
     echo "    new           - Create a container to build in."
     echo "    delete        - Delete a container."
 #    echo "    list          - List existing containers."
