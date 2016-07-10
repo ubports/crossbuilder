@@ -71,7 +71,7 @@ display_help () {
 #    echo "  --verbose       - Print verbose information."
     echo "  --packages       - Packages to deploy [by default: all the ones already installed on device]."
     echo "  --architecture   - Architecture to build for [defaults to architecture of connected device, if none then armhf]."
-    echo "  --ubuntu         - Version of Ubuntu to build for [defaults to 15.04]."
+    echo "  --ubuntu         - Version of Ubuntu to build for [defaults to version of connected device, if none then 15.04]."
     echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-15.04-amd64-armhf-dev)."
     echo "  --password       - User password of the device to deploy to [defaults to 0000]."
 }
@@ -470,6 +470,7 @@ DEVICE_PASSWORD=0000
 DEVICE_STATE=`adb get-state`
 if [ "$DEVICE_STATE" = "device" ] ; then
     TARGET_ARCH=$(adb shell "dpkg --print-architecture" | tr -d '\r')
+    TARGET_UBUNTU=$(adb shell "lsb_release --release --short" | tr -d '\r')
 fi;
 
 while [ "$1" != "" ]; do
