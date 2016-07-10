@@ -21,6 +21,7 @@
 # TODO:
 # BEFORE WIDESPREAD PROMOTION
 # - document commands PACKAGE parameter
+# - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
 # - support building multiple projects that depend on each other: crossbuilder PACKAGE1 PACKAGE2 PACKAGE3
 
 # PROJECT CUSTOMISATION - FASTER
@@ -28,7 +29,6 @@
 # - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 
 # LATER
-# - support Debian package format 3.0 (quilt) when no upstream tarball is available
 # - devices's local apt repository in /tmp is deleted upon reboot but apt still knows about it
 # - make it easy to build for multiple target archs simultaneously
 # - implement a 'make install' version
