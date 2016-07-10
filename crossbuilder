@@ -20,7 +20,6 @@
 
 # TODO:
 # BEFORE WIDESPREAD PROMOTION
-# - support Debian package format 3.0 (quilt)
 # - document commands PACKAGE parameter
 # - support building multiple projects that depend on each other: crossbuilder PACKAGE1 PACKAGE2 PACKAGE3
 
@@ -29,6 +28,7 @@
 # - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 
 # LATER
+# - support Debian package format 3.0 (quilt) when no upstream tarball is available
 # - devices's local apt repository in /tmp is deleted upon reboot but apt still knows about it
 # - make it easy to build for multiple target archs simultaneously
 # - implement a 'make install' version
@@ -244,7 +244,7 @@ get_source_package () {
     fi
     lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; apt-get source $PACKAGE" $USERNAME
     PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version -l $PACKAGE*/debian/changelog`
-    rm -f $PACKAGE*.orig.tar.* $PACKAGE*diff.* $PACKAGE*debian.tar* $PACKAGE*.dsc
+    exec_container "mv $PACKAGE*.orig.tar.* $PACKAGE*diff.* $PACKAGE*debian.tar* $PACKAGE*.dsc $USERDIR/" || true
     mv $PACKAGE-*/* .
     mv $PACKAGE-*/.[!.]* . || true
     rmdir $PACKAGE-*
