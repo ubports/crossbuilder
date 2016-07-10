@@ -111,6 +111,7 @@ variables () {
     USERID=150000
     GROUPID=150000
     USERDIR=/home/$USERNAME
+    SOURCE_REPOSITORY=$USERDIR/source_repository
     SCRIPT_DIR=`dirname $0`
     DEBS_TARBALL=built_debs.tar
     CREATE_REPO_SCRIPT=create_repository.sh
@@ -270,8 +271,9 @@ install_dependencies () {
 
     # install build dependencies in container
     if ! exec_container test -e $USERDIR/dependencies_installed ; then
-        echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"       
-        lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$USERDIR/
+        echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
+        exec_container mkdir -p $SOURCE_REPOSITORY
+        lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$SOURCE_REPOSITORY/
     
         backup_changelog
         trap restore_changelog HUP INT TERM QUIT
@@ -280,8 +282,9 @@ install_dependencies () {
             restore_changelog
             exit 1
         fi
-        exec_container $USERDIR/$CREATE_REPO_SCRIPT $USERDIR
-        exec_container_root add-apt-repository --enable-source \"deb file://$USERDIR/ /\"
+        exec_container "mv $USERDIR/$PACKAGE*.* $SOURCE_REPOSITORY/"
+        exec_container $SOURCE_REPOSITORY/$CREATE_REPO_SCRIPT $SOURCE_REPOSITORY
+        exec_container_root add-apt-repository --enable-source \"deb file://$SOURCE_REPOSITORY/ /\"
         exec_container_root "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000' | sudo tee /etc/apt/preferences.d/localrepo.pref"
         exec_container_root apt-get update --allow-unauthenticated
         if ! exec_container_root apt-get build-dep -y --force-yes -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
