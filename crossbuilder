@@ -469,7 +469,7 @@ DEVICE_PASSWORD=0000
 
 DEVICE_STATE=`adb get-state`
 if [ "$DEVICE_STATE" = "device" ] ; then
-    TARGET_ARCH=$(exec_device "dpkg --print-architecture")
+    TARGET_ARCH=$(adb shell "dpkg --print-architecture" | tr -d '\r')
 fi;
 
 while [ "$1" != "" ]; do
