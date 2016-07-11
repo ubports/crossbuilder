@@ -23,6 +23,7 @@
 # - document commands PACKAGE parameter
 # - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
 # - support building multiple projects that depend on each other: crossbuilder PACKAGE1 PACKAGE2 PACKAGE3
+# - when deploy fails indicate it did
 
 # PROJECT CUSTOMISATION - FASTER
 # - support per project configuration; for example post deploy rules
