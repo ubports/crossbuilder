@@ -527,7 +527,10 @@ if [ -z "$LXD_IMAGE" ] ; then
 fi
 
 COMMAND=$1
-shift
+if [ -n "$COMMAND" ] ; then
+    shift
+fi
+
 if [ "$COMMAND" = "help" ] ; then
     display_help
     exit 0
