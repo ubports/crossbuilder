@@ -607,8 +607,7 @@ else
         ;;
         delete)
             check_command_parameter_count 0 1
-            enter_package $1
-            check_changelog
+            PACKAGE=$1
             variables
             delete_container
         ;;
