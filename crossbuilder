@@ -32,6 +32,7 @@
 # - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 
 # LATER
+# - add support for icecc/distcc
 # - devices's local apt repository in /tmp is deleted upon reboot but apt still knows about it
 # - implement a 'make install' version
 # - make it faster: bypass apt update
