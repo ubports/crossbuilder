@@ -545,7 +545,7 @@ if [ "$COMMAND" = "help" ] ; then
     exit 0
 fi
 
-check_command_parameter_count() {
+check_command_parameter_count () {
     MIN_PARAMETERS=$1
     MAX_PARAMETERS=$2
     COUNT=$(echo $PARAMETERS | wc -w)
@@ -559,6 +559,21 @@ check_command_parameter_count() {
         display_help
         echo ""
         echo "${ERROR_COLOR}Command '$COMMAND' accepts at most $MAX_PARAMETERS parameters. $COUNT passed.${NC}"
+        exit 1
+    fi
+}
+
+detect_package () {
+    if test -e debian/changelog ; then
+        PACKAGE=`dpkg-parsechangelog --show-field Source`
+        PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
+    fi
+}
+
+check_changelog_exists () {
+    if ! test -e debian/changelog ; then
+        echo "${ERROR_COLOR}No debian/changelog found in $PWD.${NC}"
+        echo "If the source code is not available it can be automatically downloaded from the repositories using the 'source' command." 
         exit 1
     fi
 }
@@ -577,23 +592,16 @@ enter_package () {
     fi
 }
 
-detect_package () {
-    if test -e debian/changelog ; then
-        PACKAGE=`dpkg-parsechangelog --show-field Source`
-        PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
-    else
-        echo "${ERROR_COLOR}No debian/changelog found in $PWD.${NC}"
-        echo "If the source code is not available it can be automatically downloaded from the repositories using the 'source' command." 
-        exit 1
-    fi
-}
-
-enter_or_detect_package() {
+enter_or_detect_package () {
     PACKAGE=$1
     if [ -n "$PACKAGE" ] ; then
         enter_package $PACKAGE
+        detect_package
+        check_changelog_exists
+    else
+        detect_package
+        check_changelog_exists
     fi
-    detect_package
 }
 
 enter_new_or_detect_package() {
@@ -601,13 +609,16 @@ enter_new_or_detect_package() {
     if [ -n "$PACKAGE" ] ; then
         mkdir -p $PACKAGE
         enter_package $PACKAGE
+        detect_package
     else
         detect_package
+        check_changelog_exists
     fi
 }
 
 if [ -z "$COMMAND" ] ; then
     detect_package
+    check_changelog_exists
     variables
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
     new_container
@@ -634,10 +645,7 @@ else
         ;;
         delete)
             check_command_parameter_count 0 1
-            PACKAGE=$1
-            if [ -z "$PACKAGE" ] ; then
-                detect_package
-            fi
+            enter_or_detect_package $1
             variables
             delete_container
         ;;
