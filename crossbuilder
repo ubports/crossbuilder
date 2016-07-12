@@ -23,6 +23,9 @@
 # - document commands PACKAGE parameter
 # - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
 # - when deploy fails indicate it did
+# - should build the current directory, not the previously mounted one of the same project
+# - crossbuilder source should not fail if the container already exists
+# - crossbuilder source should fail if a binary package is given to it
 
 # PROJECT CUSTOMISATION - FASTER
 # - support per project configuration; for example post deploy rules, custom build rules, custom deploy rules
