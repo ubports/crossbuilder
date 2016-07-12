@@ -273,7 +273,7 @@ ensure_upstream_tarball () {
     if grep quilt debian/source/format > /dev/null 2>&1 ; then
         echo "${POSITIVE_COLOR}Downloading upstream tarball of $PACKAGE in container.${NC}"
         enable_overlay_source
-        exec_container "cd $USERDIR && apt-get source --download-only $PACKAGE"
+        exec_container "cd $USERDIR && apt-get source --download-only --allow-unauthenticated $PACKAGE"
     fi
 }
 
