@@ -687,7 +687,7 @@ else
                     fi
                     install_dependencies
                     build
-                    PREVIOUS_BUILD_FOLDER=$package
+                    PREVIOUS_BUILD_FOLDER=$PWD
                 done
             fi
         ;;
