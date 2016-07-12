@@ -294,7 +294,9 @@ install_dependencies () {
             restore_changelog
             exit 1
         fi
-        exec_container "mv $USERDIR/$PACKAGE*.* $SOURCE_REPOSITORY/"
+        if ! exec_container "mv -f $USERDIR/$PACKAGE*.* $SOURCE_REPOSITORY/" ; then
+            exec_container "rm -f $USERDIR/$PACKAGE*.*"
+        fi
         exec_container $SOURCE_REPOSITORY/$CREATE_REPO_SCRIPT $SOURCE_REPOSITORY
         exec_container_root add-apt-repository --enable-source \"deb file://$SOURCE_REPOSITORY/ /\"
         exec_container_root "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000' | sudo tee /etc/apt/preferences.d/localrepo.pref"
