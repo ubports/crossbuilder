@@ -23,7 +23,6 @@
 # - document commands PACKAGE parameter
 # - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
 # - when deploy fails indicate it did
-# - do not only use username but also userid to support multiusers dev machines
 
 # PROJECT CUSTOMISATION - FASTER
 # - support per project configuration; for example post deploy rules, custom build rules, custom deploy rules
