@@ -561,18 +561,14 @@ enter_package () {
     ORIGINAL_DIRECTORY=$PWD
     PACKAGE=$1
     if [ -n "$PACKAGE" ] ; then
-        cd $PACKAGE
+        if ! cd $PACKAGE ; then
+            echo "${ERROR_COLOR}No directory $PACKAGE.${NC}"
+            exit 1
+        fi
     fi
 }
 
 detect_package () {
-    if test -e debian/changelog ; then
-        PACKAGE=`dpkg-parsechangelog --show-field Source`
-        PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
-    fi
-}
-
-check_changelog () {
     if test -e debian/changelog ; then
         PACKAGE=`dpkg-parsechangelog --show-field Source`
         PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
@@ -583,8 +579,26 @@ check_changelog () {
     fi
 }
 
+enter_or_detect_package() {
+    PACKAGE=$1
+    if [ -n "$PACKAGE" ] ; then
+        enter_package $PACKAGE
+    fi
+    detect_package
+}
+
+enter_new_or_detect_package() {
+    PACKAGE=$1
+    if [ -n "$PACKAGE" ] ; then
+        mkdir -p $PACKAGE
+        enter_package $PACKAGE
+    else
+        detect_package
+    fi
+}
+
 if [ -z "$COMMAND" ] ; then
-    check_changelog
+    detect_package
     variables
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
     new_container
@@ -605,13 +619,7 @@ else
         ;;
         new)
             check_command_parameter_count 0 1
-            PACKAGE=$1
-            if [ -n "$PACKAGE" ] ; then
-                mkdir -p $PACKAGE
-                enter_package $PACKAGE
-            else
-                detect_package
-            fi
+            enter_new_or_detect_package $1
             variables
             new_container
         ;;
@@ -626,13 +634,7 @@ else
         ;;
         shell)
             check_command_parameter_count 0 1
-            PACKAGE=$1
-            if [ -n "$PACKAGE" ] ; then
-                mkdir -p $PACKAGE
-                enter_package $PACKAGE
-            else
-                detect_package
-            fi
+            enter_new_or_detect_package $1
             variables
             new_container
             shell_container
@@ -644,16 +646,16 @@ else
                 exit 1
             fi
             check_command_parameter_count 1 1
+            # FIXME: should fail if $PACKAGE already exists and is not empty
             mkdir -p $PACKAGE
-            enter_package $PACKAGE
+            cd $PACKAGE
             variables
             new_container
             get_source_package
         ;;
         dependencies)
             check_command_parameter_count 0 1
-            enter_package $1
-            check_changelog
+            enter_or_detect_package $1
             variables
             new_container
             exec_container rm -f $USERDIR/dependencies_installed
@@ -661,8 +663,7 @@ else
         ;;
         build)
             check_command_parameter_count 0 1
-            enter_package $1
-            check_changelog
+            enter_or_detect_package $1
             variables
             new_container
             install_dependencies
@@ -670,15 +671,13 @@ else
         ;;
         clean)
             check_command_parameter_count 0 1
-            enter_package $1
-            check_changelog
+            enter_or_detect_package $1
             variables
             clean
         ;;
         deploy)
             check_command_parameter_count 0 1
-            enter_package $1
-            check_changelog
+            enter_or_detect_package $1
             variables
             deploy_to_device
         ;;
