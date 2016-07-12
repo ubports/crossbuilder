@@ -540,13 +540,13 @@ check_command_parameter_count() {
     MIN_PARAMETERS=$1
     MAX_PARAMETERS=$2
     COUNT=$(echo $PARAMETERS | wc -w)
-    if [ $COUNT -lt $MIN_PARAMETERS ] ; then
+    if  [ -n $MIN_PARAMETERS ] && [ $COUNT -lt $MIN_PARAMETERS ] ; then
         display_help
         echo ""
         echo "${ERROR_COLOR}Command '$COMMAND' requires a minimum of $MIN_PARAMETERS parameters. $COUNT passed.${NC}"
         exit 1
     fi
-    if [ $COUNT -gt $MAX_PARAMETERS ] ; then
+    if [ -n $MAX_PARAMETERS ] && [ $COUNT -gt $MAX_PARAMETERS ] ; then
         display_help
         echo ""
         echo "${ERROR_COLOR}Command '$COMMAND' accepts at most $MAX_PARAMETERS parameters. $COUNT passed.${NC}"
