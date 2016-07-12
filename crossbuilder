@@ -324,7 +324,7 @@ install_dependencies () {
 build () {
     # build package in container
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
-    exec_container "rm -f ../*.deb"
+#    exec_container "rm -f ../*.deb"
     exec_container "rm -f debian/*.debhelper.log"
     backup_changelog
     trap restore_changelog HUP INT TERM QUIT
@@ -349,6 +349,7 @@ copy_build_to_container () {
     exec_container mkdir -p $SOURCE_REPOSITORY
     lxc file push $BUILD_FOLDER/$DEBS_TARBALL $LXD_CONTAINER$SOURCE_REPOSITORY/
     exec_container "tar xf $SOURCE_REPOSITORY/$DEBS_TARBALL --directory $SOURCE_REPOSITORY/"
+    exec_container "tar xf $SOURCE_REPOSITORY/$DEBS_TARBALL --directory $USERDIR/"
 }
 
 clean () {
