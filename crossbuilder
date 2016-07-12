@@ -219,9 +219,11 @@ new_container () {
         exec_container_root passwd --delete $USERNAME
     fi
 
-    if ! lxc config device get $LXD_CONTAINER current_dir_mount disk ; then
+    if ! lxc config device get $LXD_CONTAINER current_dir_mount disk 2> /dev/null ; then
         echo "${POSITIVE_COLOR}Mounting $MOUNTED_DIRECTORY in container.${NC}"
         lxc config device add $LXD_CONTAINER current_dir_mount disk source=$MOUNTED_DIRECTORY path=$MOUNT_POINT
+    else
+        lxc config device set $LXD_CONTAINER current_dir_mount source $MOUNTED_DIRECTORY
     fi
 }
 
