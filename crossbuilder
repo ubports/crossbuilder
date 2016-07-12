@@ -22,7 +22,6 @@
 # BEFORE WIDESPREAD PROMOTION
 # - document commands PACKAGE parameter
 # - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
-# - support building multiple projects that depend on each other: crossbuilder PACKAGE1 PACKAGE2 PACKAGE3
 # - when deploy fails indicate it did
 # - do not only use username but also userid to support multiusers dev machines
 
@@ -344,6 +343,14 @@ build () {
     exec_container "rm ../*.deb ../*.changes ../$DEBS_TARBALL"
 }
 
+copy_build_to_container () {
+    BUILD_FOLDER=$1
+    echo "${POSITIVE_COLOR}Copying and extracting $DEBS_TARBALL from $BUILD_FOLDER into container $LXD_CONTAINER.${NC}"
+    exec_container mkdir -p $SOURCE_REPOSITORY
+    lxc file push $BUILD_FOLDER/$DEBS_TARBALL $LXD_CONTAINER$SOURCE_REPOSITORY/
+    exec_container "tar xf $SOURCE_REPOSITORY/$DEBS_TARBALL --directory $SOURCE_REPOSITORY/"
+}
+
 clean () {
     echo "${POSITIVE_COLOR}Cleaning previous build of $PACKAGE for $TARGET_ARCH.${NC}"
     exec_container debian/rules clean
@@ -662,12 +669,27 @@ else
             install_dependencies
         ;;
         build)
-            check_command_parameter_count 0 1
-            enter_or_detect_package $1
-            variables
-            new_container
-            install_dependencies
-            build
+            PACKAGES=$@
+            if [ -z "$PACKAGES" ] ; then
+                enter_or_detect_package $1
+                variables
+                new_container
+                install_dependencies
+                build
+            else
+                for package in $PACKAGES ; do
+                    enter_or_detect_package $package
+                    variables
+                    new_container
+                    if [ -n "$PREVIOUS_BUILD_FOLDER" ] ; then
+                        copy_build_to_container $PREVIOUS_BUILD_FOLDER
+                        exec_container rm -f $USERDIR/dependencies_installed
+                    fi
+                    install_dependencies
+                    build
+                    PREVIOUS_BUILD_FOLDER=$package
+                done
+            fi
         ;;
         clean)
             check_command_parameter_count 0 1
