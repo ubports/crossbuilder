@@ -30,7 +30,6 @@
 
 # LATER
 # - devices's local apt repository in /tmp is deleted upon reboot but apt still knows about it
-# - make it easy to build for multiple target archs simultaneously
 # - implement a 'make install' version
 # - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
