@@ -26,6 +26,7 @@
 # - should build the current directory, not the previously mounted one of the same project
 # - crossbuilder source should not fail if the container already exists
 # - crossbuilder source should fail if a binary package is given to it
+# - options passed after the command failed with poor messages
 
 # PROJECT CUSTOMISATION - FASTER
 # - support per project configuration; for example post deploy rules, custom build rules, custom deploy rules
