@@ -217,6 +217,12 @@ new_container () {
         exec_container_root adduser $USERNAME sudo
         # set empty password for the user
         exec_container_root passwd --delete $USERNAME
+        # FIXME: these should probably be set in the image already
+        exec_container_root "printf 'export PKG_CONFIG_PATH=/usr/lib/$TARGET_FARCH/pkgconfig\n\
+export QT_SELECT=qt5-$HOST_FARCH-$TARGET_FARCH\n\
+export CC=$TARGET_FARCH-gcc\n\
+export CXX=$TARGET_FARCH-g++\n\
+' >> /etc/profile.d/clickvars.sh"
     fi
 
     if ! lxc config device get $LXD_CONTAINER current_dir_mount disk 2> /dev/null ; then
