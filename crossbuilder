@@ -34,9 +34,7 @@
 
 # LATER
 # - add support for icecc/distcc
-# - devices's local apt repository in /tmp is deleted upon reboot but apt still knows about it
 # - implement a 'make install' version
-# - make it faster: bypass apt update
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
 
@@ -433,17 +431,20 @@ deploy_to_device () {
         rm -f $CREATE_REPO_SCRIPT
         if ! adb pull /tmp/repo/$CREATE_REPO_SCRIPT 2> /dev/null ; then
             adb push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
-            exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
-            exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A add-apt-repository -y "deb file:///tmp/repo/ /"
+            exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo        
+            exec_device "printf 'deb file:/tmp/repo/ /\n' > /tmp/repo/sources.list"
+            exec_device "cp /etc/apt/sources.list /tmp/repo/all.list"
+            exec_device "cat /tmp/repo/sources.list >> /tmp/repo/all.list"
             SERIES=$(adb shell lsb_release -cs | tr -d '\r')
             exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
+#            exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
         else
             exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
         fi;
 
         exec_device "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 50' /etc/apt/preferences.d/extra-ppas.pref"
-        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
-        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade --yes --force-yes
+        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A  apt-get update -o Dir::Etc::sourcelist="/tmp/repo/sources.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade -o Dir::Etc::sourcelist="/tmp/repo/all.list" --yes --force-yes
         exec_device "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 1001' /etc/apt/preferences.d/extra-ppas.pref"
     fi;
 
