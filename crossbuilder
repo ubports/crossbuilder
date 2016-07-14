@@ -26,6 +26,7 @@
 # - crossbuilder source should fail if a binary package is given to it
 # - options passed after the command failed with poor messages
 # - fix --packages deploy after a package-less build
+# - add optional deletion of LXD images and containers in setup-lxd
 
 # PROJECT CUSTOMISATION - FASTER
 # - support per project configuration; for example post deploy rules, custom build rules, custom deploy rules
