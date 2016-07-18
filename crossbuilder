@@ -407,14 +407,15 @@ deploy_to_device () {
         exit 1
     fi
 
+    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A mount -o remount,rw /
+
     if ! test -e $DEBS_TARBALL ; then
-        echo "${ERROR_COLOR}No build artifacts ($DEBS_TARBALL) to deploy to device. Run $PROGRAM_NAME build first.${NC}"
+        echo "${ERROR_COLOR}No Debian packages ($DEBS_TARBALL) to deploy to device. Run $PROGRAM_NAME build first.${NC}"
         exit 1
     fi
 
-    echo "${POSITIVE_COLOR}Transferring build artifacts to device.${NC}"
+    echo "${POSITIVE_COLOR}Transferring Debian packages to device.${NC}"
     # tranfer debian packages to device
-    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A mount -o remount,rw /
     exec_device mkdir -p /tmp/repo
     adb push $DEBS_TARBALL /tmp/repo/
     exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm -f /tmp/repo/$DEBS_TARBALL"
