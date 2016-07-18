@@ -310,8 +310,6 @@ ensure_upstream_tarball () {
 }
 
 install_dependencies () {
-    exec_container [ -x debian/bileto_pre_release_hook ] && ./debian/bileto_pre_release_hook
-
     # install build dependencies in container
     if ! exec_container test -e $USERDIR/dependencies_installed ; then
         ensure_upstream_tarball
