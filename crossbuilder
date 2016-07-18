@@ -19,10 +19,9 @@
 # TODO:
 # NOW
 # - document commands PACKAGE parameter
-# - add configuration file for password: ~/.config/crossbuilder
-# - support per project configuration; for example post deploy rules, custom build rules, custom deploy rules
 
 # LATER
+# - support per project custom build rules and custom deploy rules
 # - options passed after the command failed with poor messages
 # - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 # - add support for icecc/distcc
@@ -126,7 +125,7 @@ variables () {
     MOUNT_POINT=$USERDIR/$PACKAGE
     SOURCE_PATH_LOCAL=$MOUNTED_DIRECTORY
     SOURCE_PATH_CONTAINER=$MOUNT_POINT
-    POST_DEPLOY_SCRIPT=crossbuilder_post
+    POST_DEPLOY_SCRIPT=.crossbuilder/post_deploy
     HOST_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_MULTIARCH)
     TARGET_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
 }
@@ -499,7 +498,7 @@ deploy_to_device () {
         rm -f password_ok
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A rm -f /tmp/password_ok
     else
-        echo "${ERROR_COLOR}Device password incorrect. Use --password=PASSWORD to pass the correct one.${NC}"
+        echo "${ERROR_COLOR}Device password incorrect. Use --password to pass the correct one or write it in $DEVICE_PASSWORD_FILE.${NC}"
         exit 1
     fi
 
@@ -516,6 +515,8 @@ deploy_to_device () {
         echo "${POSITIVE_COLOR}Execute project specific post deploy script ($POST_DEPLOY_SCRIPT).${NC}"
         adb push $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT /tmp
         exec_device sh /tmp/$POST_DEPLOY_SCRIPT
+    else
+        echo "${POSITIVE_COLOR}If a script named $POST_DEPLOY_SCRIPT existed, it would be executed on device after every deploy.${NC}"
     fi
 }
 
@@ -563,7 +564,10 @@ ensure_lxd_subuid
 HOST_ARCH=`dpkg --print-architecture`
 TARGET_ARCH=armhf
 TARGET_UBUNTU=15.04
+
 DEVICE_PASSWORD=0000
+DEVICE_PASSWORD_FILE=~/.config/crossbuilder/device_password
+[ -e "$DEVICE_PASSWORD_FILE" ] && DEVICE_PASSWORD=$(cat $DEVICE_PASSWORD_FILE)
 
 DEVICE_STATE=`adb get-state`
 if [ "$DEVICE_STATE" = "device" ] ; then
