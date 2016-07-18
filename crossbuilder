@@ -22,7 +22,6 @@
 # BEFORE WIDESPREAD PROMOTION
 # - document commands PACKAGE parameter
 # - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
-# - crossbuilder source should fail if a binary package is given to it
 # - options passed after the command failed with poor messages
 # - fix --packages deploy after a package-less build
 # - add optional deletion of LXD images and containers in setup-lxd
@@ -274,7 +273,13 @@ get_source_package () {
 
     enable_overlay_source
 
-    lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; apt-get source $PACKAGE" $USERNAME
+    if ! lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; apt-get source --only-source $PACKAGE" $USERNAME ; then
+        echo "${ERROR_COLOR}No source package exists with the name $PACKAGE.${NC}"
+        echo "${ERROR_COLOR}Deleting container $LXD_CONTAINER.${NC}"
+        lxc delete -f $LXD_CONTAINER
+        exit 1
+    fi
+
     PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version -l $PACKAGE*/debian/changelog`
     exec_container "mv $PACKAGE*.orig.tar.* $PACKAGE*diff.* $PACKAGE*debian.tar* $PACKAGE*.dsc $USERDIR/" || true
     mv $PACKAGE-*/* .
