@@ -603,6 +603,10 @@ while [ "$1" != "" ]; do
             --deploy-path)
                 DEPLOY_PATH=$VALUE
             ;;
+            --help)
+                display_help
+                exit 0
+            ;;
             *)
                 display_help
                 echo ""
