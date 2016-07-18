@@ -376,6 +376,7 @@ build_deb () {
 
 build_make_install () {
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
+    exec_container "rm -f debian/*.debhelper.log"
     exec_container "DEB_BUILD_PROFILES=cross DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip nocheck' fakeroot debian/rules install"
 }
 
