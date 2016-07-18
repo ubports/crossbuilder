@@ -17,14 +17,14 @@
 # Author: Florian Boucault <florian.boucault@canonical.com>
 
 # TODO:
-# BEFORE WIDESPREAD PROMOTION
+# NOW
 # - document commands PACKAGE parameter
-# - options passed after the command failed with poor messages
 # - add configuration file for password: ~/.config/crossbuilder
 # - support per project configuration; for example post deploy rules, custom build rules, custom deploy rules
-# - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 
 # LATER
+# - options passed after the command failed with poor messages
+# - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 # - add support for icecc/distcc
 # - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
 # - check if a newer version of the container's image is available
