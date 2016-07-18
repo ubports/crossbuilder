@@ -95,7 +95,7 @@ variables () {
     if [ -n "$NEW_BUILD" ] ; then
         NEW_PACKAGE_VERSION=$PACKAGE_VERSION"local~"`date +%s`
     else
-        LATEST_DEBS_TARBALL=$(ls -1 --sort=time $DEBS_TARBALL_ROOT_*.tar | head -n1)
+        LATEST_DEBS_TARBALL=$(ls -1 --sort=time $DEBS_TARBALL_ROOT_*.tar 2> /dev/null | head -n1)
         NEW_PACKAGE_VERSION=$(echo $LATEST_DEBS_TARBALL | sed "s/$DEBS_TARBALL_ROOT\_//" | sed "s/\.tar//")
     fi
     DEBS_TARBALL="$DEBS_TARBALL_ROOT"_"$NEW_PACKAGE_VERSION.tar"
