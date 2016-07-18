@@ -104,9 +104,18 @@ variables () {
     else
         NEW_PACKAGE_VERSION=$PACKAGE_VERSION
     fi;
+
     LXD_IMAGE_NO_DOT=$(echo $LXD_IMAGE | sed "s/\./-/")
     LXD_IMAGE_NO_PREFIX=$(echo $LXD_IMAGE_NO_DOT | sed "s/.*\://")
-    LXD_CONTAINER=builder-$PACKAGE-$LXD_IMAGE_NO_PREFIX
+    LXD_IMAGE_NO_SDK=$(echo $LXD_IMAGE_NO_PREFIX | sed "s/ubuntu-sdk/usdk/")
+    LXD_CONTAINER_COMPAT=builder-$PACKAGE-$LXD_IMAGE_NO_PREFIX
+    LXD_CONTAINER=$PACKAGE-$LXD_IMAGE_NO_SDK
+    if lxc info $LXD_CONTAINER_COMPAT > /dev/null 2>&1 ; then
+        echo "${ERROR_COLOR}Containers are switching to shorter names, please manually delete your container: lxc delete -f $LXD_CONTAINER_COMPAT${NC}"
+        echo "${ERROR_COLOR}Next time it will be called $LXD_CONTAINER.${NC}"
+        LXD_CONTAINER=$LXD_CONTAINER_COMPAT
+    fi
+
     # LXD container name can only have HOST_NAME_MAX characters
     LXD_CONTAINER=$(echo $LXD_CONTAINER | cut -c 1-$((`getconf HOST_NAME_MAX` - 1)))
     USERNAME=`id --user --name`
