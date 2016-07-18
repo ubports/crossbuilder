@@ -337,7 +337,7 @@ install_dependencies () {
     fi;
 }
 
-build () {
+build_deb () {
     # build package in container
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
 #    exec_container "rm -f ../*.deb"
@@ -358,6 +358,10 @@ build () {
     exec_container "tar cf ../$DEBS_TARBALL ../*.deb"
     lxc file pull $LXD_CONTAINER$USERDIR/$DEBS_TARBALL .
     exec_container "rm ../*.deb ../*.changes ../$DEBS_TARBALL"
+}
+
+build () {
+    build_deb
 }
 
 copy_build_to_container () {
@@ -389,29 +393,7 @@ check_for_device_network() {
     fi
 }
 
-deploy_to_device () {
-    DEVICE_STATE=`adb get-state`
-    if [ "$DEVICE_STATE" != "device" ] ; then
-        echo "${ERROR_COLOR}No device connected to deploy to.${NC}"
-        exit 1
-    fi;
-
-    # setup sudo on device
-    exec_device "printf '#\041/bin/sh\necho $DEVICE_PASSWORD' >/tmp/askpass.sh"
-    exec_device chmod +x /tmp/askpass.sh
-
-    # check password is correct
-    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A touch /tmp/password_ok
-    if adb pull /tmp/password_ok ; then
-        rm -f password_ok
-        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A rm -f /tmp/password_ok
-    else
-        echo "${ERROR_COLOR}Device password incorrect. Use --password=PASSWORD to pass the correct one.${NC}"
-        exit 1
-    fi
-
-    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A mount -o remount,rw /
-
+deploy_deb () {
     if ! test -e $DEBS_TARBALL ; then
         echo "${ERROR_COLOR}No Debian packages ($DEBS_TARBALL) to deploy to device. Run $PROGRAM_NAME build first.${NC}"
         exit 1
@@ -454,6 +436,32 @@ deploy_to_device () {
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade -o Dir::Etc::sourcelist="/tmp/repo/all.list" --yes --force-yes
         exec_device "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 1001' /etc/apt/preferences.d/extra-ppas.pref"
     fi;
+}
+
+deploy_to_device () {
+    DEVICE_STATE=`adb get-state`
+    if [ "$DEVICE_STATE" != "device" ] ; then
+        echo "${ERROR_COLOR}No device connected to deploy to.${NC}"
+        exit 1
+    fi;
+
+    # setup sudo on device
+    exec_device "printf '#\041/bin/sh\necho $DEVICE_PASSWORD' >/tmp/askpass.sh"
+    exec_device chmod +x /tmp/askpass.sh
+
+    # check password is correct
+    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A touch /tmp/password_ok
+    if adb pull /tmp/password_ok ; then
+        rm -f password_ok
+        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A rm -f /tmp/password_ok
+    else
+        echo "${ERROR_COLOR}Device password incorrect. Use --password=PASSWORD to pass the correct one.${NC}"
+        exit 1
+    fi
+
+    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A mount -o remount,rw /
+
+    deploy_deb
 
     # execute post deploy
     if test -e $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT ; then
