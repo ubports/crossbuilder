@@ -16,14 +16,11 @@
 #
 # Author: Florian Boucault <florian.boucault@canonical.com>
 
- 
-
 # TODO:
 # BEFORE WIDESPREAD PROMOTION
 # - document commands PACKAGE parameter
 # - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
 # - options passed after the command failed with poor messages
-# - fix --packages deploy after a package-less build
 # - add optional deletion of LXD images and containers in setup-lxd
 # - add configuration file for password: ~/.config/crossbuilder
 
@@ -97,11 +94,14 @@ exec_container () {
 }
 
 variables () {
-    if [ -z "$PACKAGES_TO_DEPLOY" ] ; then
+    DEBS_TARBALL_ROOT=debs
+    if [ -n "$NEW_BUILD" ] ; then
         NEW_PACKAGE_VERSION=$PACKAGE_VERSION"local~"`date +%s`
     else
-        NEW_PACKAGE_VERSION=$PACKAGE_VERSION
-    fi;
+        LATEST_DEBS_TARBALL=$(ls -1 --sort=time $DEBS_TARBALL_ROOT_*.tar | head -n1)
+        NEW_PACKAGE_VERSION=$(echo $LATEST_DEBS_TARBALL | sed "s/$DEBS_TARBALL_ROOT\_//" | sed "s/\.tar//")
+    fi
+    DEBS_TARBALL="$DEBS_TARBALL_ROOT"_"$NEW_PACKAGE_VERSION.tar"
 
     LXD_IMAGE_NO_DOT=$(echo $LXD_IMAGE | sed "s/\./-/")
     LXD_IMAGE_NO_PREFIX=$(echo $LXD_IMAGE_NO_DOT | sed "s/.*\://")
@@ -123,7 +123,6 @@ variables () {
     USERDIR=/home/$USERNAME
     SOURCE_REPOSITORY=$USERDIR/source_repository
     SCRIPT_DIR=`dirname $0`
-    DEBS_TARBALL=built_debs.tar
     CREATE_REPO_SCRIPT=create_repository.sh
     PARALLEL_BUILD=$((`nproc` + 1))
     MOUNTED_DIRECTORY=$PWD
@@ -373,7 +372,7 @@ build_deb () {
 
     # transfer resulting debian packages to local machine
     echo "${POSITIVE_COLOR}Packing build artifacts in $DEBS_TARBALL.${NC}"
-    rm -f $DEBS_TARBALL
+    rm -f $DEBS_TARBALL_ROOT*
     exec_container "tar cf ../$DEBS_TARBALL ../*.deb"
     lxc file pull $LXD_CONTAINER$USERDIR/$DEBS_TARBALL .
     exec_container "rm ../*.deb ../*.changes ../$DEBS_TARBALL"
@@ -431,7 +430,7 @@ deploy_deb () {
     # tranfer debian packages to device
     exec_device mkdir -p /tmp/repo
     adb push $DEBS_TARBALL /tmp/repo/
-    exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm -f /tmp/repo/$DEBS_TARBALL"
+    exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm -f /tmp/repo/$DEBS_TARBALL_ROOT*"
 
     # install debian packages on device
     if [ ! -z "$PACKAGES_TO_DEPLOY" ] ; then
@@ -703,6 +702,7 @@ enter_new_or_detect_package() {
 }
 
 if [ -z "$COMMAND" ] ; then
+    NEW_BUILD=1
     detect_package
     check_changelog_exists
     variables
@@ -765,6 +765,7 @@ else
             install_dependencies
         ;;
         build)
+            NEW_BUILD=1
             PACKAGES=$@
             if [ -z "$PACKAGES" ] ; then
                 enter_or_detect_package $1
