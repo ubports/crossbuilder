@@ -22,7 +22,6 @@
 # BEFORE WIDESPREAD PROMOTION
 # - document commands PACKAGE parameter
 # - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
-# - crossbuilder source should not fail if the container already exists
 # - crossbuilder source should fail if a binary package is given to it
 # - options passed after the command failed with poor messages
 # - fix --packages deploy after a package-less build
@@ -267,7 +266,14 @@ enable_overlay_source () {
 
 get_source_package () {
     echo "${POSITIVE_COLOR}Downloading source package $PACKAGE for Ubuntu $TARGET_UBUNTU.${NC}"
+
+    # cleanup source repository potentially setup by install_dependencies before
+    exec_container rm -f $USERDIR/dependencies_installed
+    exec_container_root add-apt-repository --remove --enable-source \"deb file://$SOURCE_REPOSITORY/ /\"
+    exec_container_root "sudo rm -f /etc/apt/preferences.d/localrepo.pref"
+
     enable_overlay_source
+
     lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; apt-get source $PACKAGE" $USERNAME
     PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version -l $PACKAGE*/debian/changelog`
     exec_container "mv $PACKAGE*.orig.tar.* $PACKAGE*diff.* $PACKAGE*debian.tar* $PACKAGE*.dsc $USERDIR/" || true
