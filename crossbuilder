@@ -29,13 +29,12 @@
 # - add optional deletion of LXD images and containers in setup-lxd
 # - add configuration file for password: ~/.config/crossbuilder
 
-# PROJECT CUSTOMISATION - FASTER
+# PROJECT CUSTOMISATION
 # - support per project configuration; for example post deploy rules, custom build rules, custom deploy rules
 # - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 
 # LATER
 # - add support for icecc/distcc
-# - implement a 'make install' version
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
 
@@ -77,6 +76,8 @@ display_help () {
     echo "  --ubuntu         - Version of Ubuntu to build for [defaults to version of connected device, if none then 15.04]."
     echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-15.04-amd64-armhf-dev)."
     echo "  --password       - User password of the device to deploy to [defaults to 0000]."
+    echo "  --no-deb         - Do not build Debian packages and uses rsync to deploy the build artifacts."
+    echo "  --deploy-path    - When deploying with --no-deb (rsync), installation path for the build artifacts [defaults to /]."
 }
 
 
@@ -360,8 +361,17 @@ build_deb () {
     exec_container "rm ../*.deb ../*.changes ../$DEBS_TARBALL"
 }
 
+build_make_install () {
+    echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
+    exec_container "DEB_BUILD_PROFILES=cross DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip nocheck' fakeroot debian/rules install"
+}
+
 build () {
-    build_deb
+    if [ -n "$NO_DEB" ] ; then
+        build_make_install
+    else
+        build_deb
+    fi
 }
 
 copy_build_to_container () {
@@ -438,6 +448,26 @@ deploy_deb () {
     fi;
 }
 
+deploy_make_install () {
+    echo "${POSITIVE_COLOR}Transferring build artifacts to device.${NC}"
+    if [ -z "$PACKAGES_TO_DEPLOY" ] ; then
+        PACKAGES_TO_DEPLOY=$(grep Package debian/control | cut -d ' ' -f 2)
+    fi
+
+    for binary_package in $PACKAGES_TO_DEPLOY
+    do
+        FOLDERS_TO_DEPLOY="$FOLDERS_TO_DEPLOY debian/$binary_package/"
+        # clean up build artifacts from a potential previous Debian package build
+        rm -rf debian/$binary_package/DEBIAN
+    done
+
+    if [ -z "$DEPLOY_PATH" ] ; then
+        DEPLOY_PATH="/"
+    fi
+
+    sync_with_device $FOLDERS_TO_DEPLOY $DEPLOY_PATH
+}
+
 deploy_to_device () {
     DEVICE_STATE=`adb get-state`
     if [ "$DEVICE_STATE" != "device" ] ; then
@@ -461,7 +491,11 @@ deploy_to_device () {
 
     exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A mount -o remount,rw /
 
-    deploy_deb
+    if [ -n "$NO_DEB" ] ; then
+        deploy_make_install
+    else
+        deploy_deb
+    fi
 
     # execute post deploy
     if test -e $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT ; then
@@ -543,6 +577,12 @@ while [ "$1" != "" ]; do
             ;;
             --password)
                 DEVICE_PASSWORD=$VALUE
+            ;;
+            --no-deb)
+                NO_DEB=1
+            ;;
+            --deploy-path)
+                DEPLOY_PATH=$VALUE
             ;;
             *)
                 display_help
@@ -715,6 +755,11 @@ else
                 install_dependencies
                 build
             else
+                if [ -n "$NO_DEB" ] ; then
+                    echo "${ERROR_COLOR}Building dependent packages with the --no-deb option is not supported yet.${NC}"
+                    exit 1
+                fi
+
                 for package in $PACKAGES ; do
                     enter_or_detect_package $package
                     variables
