@@ -19,17 +19,14 @@
 # TODO:
 # BEFORE WIDESPREAD PROMOTION
 # - document commands PACKAGE parameter
-# - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
 # - options passed after the command failed with poor messages
-# - add optional deletion of LXD images and containers in setup-lxd
 # - add configuration file for password: ~/.config/crossbuilder
-
-# PROJECT CUSTOMISATION
 # - support per project configuration; for example post deploy rules, custom build rules, custom deploy rules
 # - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
 
 # LATER
 # - add support for icecc/distcc
+# - support Debian package format 3.0 (quilt) when no upstream tarball is available (ex: libqofono)
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
 
@@ -717,9 +714,21 @@ else
         setup-lxd)
             check_command_parameter_count 0 0
             if lxd_has_image_or_container ; then
-                echo "${POSITIVE_COLOR}You are already using LXD. To set it up again you must delete "
-                echo "all images and containers listed by 'lxc list' and 'lxc image list'.${NC}"
-                return 0
+                echo "${ERROR_COLOR}You are already using LXD. Setting it up again will destroy all your existing LXD images and containers.${NC}"
+                echo -n "${ERROR_COLOR}Are you sure you wish to continue? (y/n) ${NC}"
+                read REPLY
+                echo
+                if [ "$REPLY" = y ]
+                then
+                    ALL_LXD_CONTAINERS=$(lxc list -cn | grep -v "\-\-\-\-" | grep -v NAME | cut -d ' ' -f 2)
+                    ALL_LXD_IMAGES=$(lxc image list | grep -v "\-\-\-\-" | grep -v ALIAS | cut -d '|' -f 3)
+                    lxc delete -f $ALL_LXD_CONTAINERS
+                    for image in $ALL_LXD_IMAGES ; do
+                        lxc image delete $image
+                    done
+                else
+                    exit 0
+                fi
             fi
             setup_lxd
         ;;
