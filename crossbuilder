@@ -351,6 +351,7 @@ build () {
 
     # transfer resulting debian packages to local machine
     echo "${POSITIVE_COLOR}Packing build artifacts in $DEBS_TARBALL.${NC}"
+    rm -f $DEBS_TARBALL
     exec_container "tar cf ../$DEBS_TARBALL ../*.deb"
     lxc file pull $LXD_CONTAINER$USERDIR/$DEBS_TARBALL .
     exec_container "rm ../*.deb ../*.changes ../$DEBS_TARBALL"
