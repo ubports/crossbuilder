@@ -775,6 +775,7 @@ else
             get_source_package
         ;;
         dependencies)
+            NEW_BUILD=1
             check_command_parameter_count 0 1
             enter_or_detect_package $1
             variables
