@@ -19,6 +19,7 @@
 # TODO:
 # NOW
 # - document commands PACKAGE parameter
+# - setup-lxd: better warn users of encrypted home directory
 
 # LATER
 # - support per project custom build rules and custom deploy rules
