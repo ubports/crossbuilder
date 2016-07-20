@@ -19,7 +19,6 @@
 # TODO:
 # NOW
 # - document commands PACKAGE parameter
-# - setup-lxd: better warn users of encrypted home directory
 
 # LATER
 # - support per project custom build rules and custom deploy rules
@@ -115,8 +114,13 @@ variables () {
     LXD_CONTAINER=$(echo $LXD_CONTAINER | cut -c 1-$((`getconf HOST_NAME_MAX` - 1)))
     USERNAME=`id --user --name`
     GROUPNAME=$USERNAME
-    USERID=150000
-    GROUPID=150000
+    if [ -n "$ENCRYPTED_HOME" ] ; then
+        USERID=`id --user`
+        GROUPID=`id --group`
+    else
+        USERID=150000
+        GROUPID=150000
+    fi
     USERDIR=/home/$USERNAME
     SOURCE_REPOSITORY=$USERDIR/source_repository
     SCRIPT_DIR=`dirname $0`
@@ -177,25 +181,31 @@ ensure_lxd_subuid () {
 
 setup_lxd () {
     echo "${POSITIVE_COLOR}Setting up LXD.${NC}"
-    echo -n "${POSITIVE_COLOR}Would you like to setup LXD with ZFS in your home directory? (y/n) \n${NC}"
-    echo -n "This is recommended for faster operation, and also in case there is not enough "
-    echo -n "space in your / partition. \n"
-    read REPLY
-    echo
-    if [ "$REPLY" = y ]
-    then
-        echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
-        sudo apt-get install -y zfsutils-linux
-        LXD_POOL=~/zfs/lxd.img
-        echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
-        mkdir `dirname $LXD_POOL`
-        truncate -s 32G $LXD_POOL
-        sudo zpool create lxd $LXD_POOL
-        sudo lxd init --auto --storage-backend zfs --storage-pool lxd
-        # add automatic mount of zfs pool upon boot
-        echo "zpool import -c /etc/zfs/zpool.cache -aN" | sudo tee /etc/rc.local
-    else
+    if [ -n "$ENCRYPTED_HOME" ] ; then
+        echo -n "${ERROR_COLOR}Your home folder is encrypted. $PROGRAM_NAME will use priviledged "
+        echo -n "LXD containers and the default storage backend (slower).\n${NC}"
         sudo lxd init --auto
+    else
+        echo -n "${POSITIVE_COLOR}Would you like to setup LXD with ZFS in your home directory? (y/n) \n${NC}"
+        echo -n "This is recommended for faster operation, and also in case there is not enough "
+        echo -n "space in your / partition. \n"
+        read REPLY
+        echo
+        if [ "$REPLY" = y ]
+        then
+            echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
+            sudo apt-get install -y zfsutils-linux
+            LXD_POOL=~/zfs/lxd.img
+            echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
+            mkdir `dirname $LXD_POOL`
+            truncate -s 32G $LXD_POOL
+            sudo zpool create lxd $LXD_POOL
+            sudo lxd init --auto --storage-backend zfs --storage-pool lxd
+            # add automatic mount of zfs pool upon boot
+            echo "zpool import -c /etc/zfs/zpool.cache -aN" | sudo tee /etc/rc.local
+        else
+            sudo lxd init --auto
+        fi
     fi
 }
 
@@ -210,7 +220,11 @@ new_container () {
         echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         lxc remote --protocol=simplestreams --public=true --accept-certificate=true add sdk https://sdk-images.canonical.com || true
         lxc init $LXD_IMAGE $LXD_CONTAINER
-        printf "lxc.id_map = g $GROUPID `id --group` 1\nlxc.id_map = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
+        if [ -n "$ENCRYPTED_HOME" ] ; then
+            lxc config set $LXD_CONTAINER security.privileged true
+        else
+            printf "lxc.id_map = g $GROUPID `id --group` 1\nlxc.id_map = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
+        fi
         lxc start $LXD_CONTAINER
         lxc exec --env GROUPID=$GROUPID --env GROUPNAME=$GROUPNAME $LXD_CONTAINER -- addgroup --gid $GROUPID $GROUPNAME
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
@@ -539,6 +553,9 @@ if [ ! -z "$MISSING_PACKAGES" ] ; then
     sudo apt install $MISSING_PACKAGES
 fi
 
+if stat --file-system $HOME | grep ecrypt ; then
+    ENCRYPTED_HOME=1
+fi
 
 if ! which lxd > /dev/null ; then
     echo "${POSITIVE_COLOR}$PROGRAM_NAME uses LXD to download dependencies and build."
