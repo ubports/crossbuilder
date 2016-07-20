@@ -289,11 +289,11 @@ get_source_package () {
 }
 
 backup_changelog () {
-    exec_container cp debian/changelog /tmp/$PACKAGE-changelog.orig
+    cp debian/changelog /tmp/$PACKAGE-changelog.orig
 }
 
 restore_changelog () {
-    exec_container mv /tmp/$PACKAGE-changelog.orig debian/changelog
+    mv /tmp/$PACKAGE-changelog.orig debian/changelog
 }
 
 ensure_upstream_tarball () {
