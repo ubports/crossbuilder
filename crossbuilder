@@ -197,7 +197,7 @@ setup_lxd () {
             sudo apt-get install -y zfsutils-linux
             LXD_POOL=~/zfs/lxd.img
             echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
-            mkdir `dirname $LXD_POOL`
+            mkdir -p `dirname $LXD_POOL`
             truncate -s 32G $LXD_POOL
             sudo zpool create lxd $LXD_POOL
             sudo lxd init --auto --storage-backend zfs --storage-pool lxd
