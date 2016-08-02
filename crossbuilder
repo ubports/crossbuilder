@@ -749,7 +749,9 @@ else
                 then
                     ALL_LXD_CONTAINERS=$(lxc list -cn | grep -v "\-\-\-\-" | grep -v NAME | cut -d ' ' -f 2)
                     ALL_LXD_IMAGES=$(lxc image list | grep -v "\-\-\-\-" | grep -v ALIAS | cut -d '|' -f 3)
-                    lxc delete -f $ALL_LXD_CONTAINERS
+                    if [ -n "$ALL_LXD_CONTAINERS" ] ; then
+                        lxc delete -f $ALL_LXD_CONTAINERS
+                    fi
                     for image in $ALL_LXD_IMAGES ; do
                         lxc image delete $image
                     done
