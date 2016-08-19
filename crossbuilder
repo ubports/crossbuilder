@@ -232,6 +232,7 @@ new_container () {
         exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
         # FIXME: without the sleep apt update fails for lack of internet connection
         sleep 3
+        exec_container_root apt update
         exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts
         exec_container_root adduser $USERNAME sudo
         # set empty password for the user
