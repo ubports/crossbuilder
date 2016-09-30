@@ -230,8 +230,8 @@ new_container () {
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
         exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
-        # FIXME: without the sleep apt update fails for lack of internet connection
-        sleep 3
+        # wait for the container's network connection
+        check_for_container_network
         exec_container_root apt update
         exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts
         exec_container_root adduser $USERNAME sudo
@@ -416,6 +416,23 @@ copy_build_to_container () {
 clean () {
     echo "${POSITIVE_COLOR}Cleaning previous build of $PACKAGE for $TARGET_ARCH.${NC}"
     exec_container debian/rules clean
+}
+
+check_for_container_network() {
+    NETWORK_UP=0
+    for i in `seq 1 10`
+    do
+        if lxc info $LXD_CONTAINER | grep -e "eth0.*inet\b" > /dev/null 2>&1 ; then
+            NETWORK_UP=1
+            break
+        fi
+        sleep 1
+    done
+    if [ $NETWORK_UP -ne 1 ] ; then
+        echo "${ERROR_COLOR}Container is not connected to the Internet.${NC}"
+        exit 1
+    fi
+
 }
 
 check_for_device_network() {
