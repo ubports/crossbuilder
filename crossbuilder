@@ -64,8 +64,8 @@ display_help () {
 #    echo "  --verbose       - Print verbose information."
     echo "  --packages       - Packages to deploy [by default: all the ones already installed on device]."
     echo "  --architecture   - Architecture to build for [defaults to architecture of connected device, if none then armhf]."
-    echo "  --ubuntu         - Version of Ubuntu to build for [defaults to version of connected device, if none then 15.04]."
-    echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-15.04-amd64-armhf-dev)."
+    echo "  --ubuntu         - Version of Ubuntu to build for [defaults to version of connected device, if none then 16.04]."
+    echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-16.04-amd64-armhf-dev)."
     echo "  --password       - User password of the device to deploy to [defaults to 0000]."
     echo "  --no-deb         - Do not build Debian packages and uses rsync to deploy the build artifacts."
     echo "  --deploy-path    - When deploying with --no-deb (rsync), installation path for the build artifacts [defaults to /]."
@@ -600,7 +600,7 @@ ensure_lxd_subuid
 
 HOST_ARCH=`dpkg --print-architecture`
 TARGET_ARCH=armhf
-TARGET_UBUNTU=15.04
+TARGET_UBUNTU=16.04
 
 DEVICE_PASSWORD=0000
 DEVICE_PASSWORD_FILE=~/.config/crossbuilder/device_password
