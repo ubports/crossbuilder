@@ -21,6 +21,7 @@
 # - document commands PACKAGE parameter
 
 # LATER
+# - support snaps by using snapcraft
 # - support per project custom build rules and custom deploy rules
 # - options passed after the command failed with poor messages
 # - option to pass configure flags (DEB_CONFIGURE_EXTRA_FLAGS)
