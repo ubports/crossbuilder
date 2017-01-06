@@ -21,6 +21,7 @@
 # - document commands PACKAGE parameter
 
 # LATER
+# - mount home directory using technique from http://insights.ubuntu.com/2016/12/08/mounting-your-home-directory-in-lxd/
 # - support snaps by using snapcraft
 # - support per project custom build rules and custom deploy rules
 # - options passed after the command failed with poor messages
