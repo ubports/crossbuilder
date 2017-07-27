@@ -407,12 +407,12 @@ build () {
 }
 
 copy_build_to_container () {
-    BUILD_FOLDER=$1
-    echo "${POSITIVE_COLOR}Copying and extracting $DEBS_TARBALL from $BUILD_FOLDER into container $LXD_CONTAINER.${NC}"
+    PREVIOUS_BUILD_FOLDER=$1
+    PREVIOUS_DEBS_TARBALL=$2
+    echo "${POSITIVE_COLOR}Copying and extracting $PREVIOUS_DEBS_TARBALL from $PREVIOUS_BUILD_FOLDER into container $LXD_CONTAINER.${NC}"
     exec_container mkdir -p $SOURCE_REPOSITORY
-    lxc file push $BUILD_FOLDER/$DEBS_TARBALL $LXD_CONTAINER$SOURCE_REPOSITORY/
-    exec_container "tar xf $SOURCE_REPOSITORY/$DEBS_TARBALL --directory $SOURCE_REPOSITORY/"
-    exec_container "tar xf $SOURCE_REPOSITORY/$DEBS_TARBALL --directory $USERDIR/"
+    lxc file push $PREVIOUS_BUILD_FOLDER/$PREVIOUS_DEBS_TARBALL $LXD_CONTAINER$SOURCE_REPOSITORY/
+    exec_container "tar xf $SOURCE_REPOSITORY/$PREVIOUS_DEBS_TARBALL --directory $SOURCE_REPOSITORY/"
 }
 
 clean () {
@@ -843,12 +843,13 @@ else
                     variables
                     new_container
                     if [ -n "$PREVIOUS_BUILD_FOLDER" ] ; then
-                        copy_build_to_container $PREVIOUS_BUILD_FOLDER
+                        copy_build_to_container $PREVIOUS_BUILD_FOLDER $PREVIOUS_DEBS_TARBALL
                         exec_container rm -f $USERDIR/dependencies_installed
                     fi
                     install_dependencies
                     build
                     PREVIOUS_BUILD_FOLDER=$PWD
+                    PREVIOUS_DEBS_TARBALL=$DEBS_TARBALL
                 done
             fi
         ;;
