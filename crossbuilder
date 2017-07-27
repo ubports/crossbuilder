@@ -329,7 +329,7 @@ install_dependencies () {
         echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
         exec_container mkdir -p $SOURCE_REPOSITORY
         lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$SOURCE_REPOSITORY/
-    
+
         backup_changelog
         trap restore_changelog HUP INT TERM QUIT
         exec_container dch -v $NEW_PACKAGE_VERSION \'\'
@@ -471,7 +471,7 @@ deploy_deb () {
         for package in $PACKAGES_TO_DEPLOY ; do
             DPKG_ARGS="$DPKG_ARGS /tmp/repo/$package"_"$NEW_PACKAGE_VERSION"_"$TARGET_ARCH.deb"
         done
-        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i $DPKG_ARGS 
+        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i $DPKG_ARGS
     else
         check_for_device_network
         echo "${POSITIVE_COLOR}Upgrading packages already installed on device with newly built ones.${NC}"
@@ -479,7 +479,7 @@ deploy_deb () {
         rm -f $CREATE_REPO_SCRIPT
         if ! adb pull /tmp/repo/$CREATE_REPO_SCRIPT 2> /dev/null ; then
             adb push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
-            exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo        
+            exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
             exec_device "printf 'deb file:/tmp/repo/ /\n' > /tmp/repo/sources.list"
             exec_device "cp /etc/apt/sources.list /tmp/repo/all.list"
             exec_device "cat /tmp/repo/sources.list >> /tmp/repo/all.list"
@@ -702,7 +702,7 @@ detect_package () {
 check_changelog_exists () {
     if ! test -e debian/changelog ; then
         echo "${ERROR_COLOR}No debian/changelog found in $PWD.${NC}"
-        echo "If the source code is not available it can be automatically downloaded from the repositories using the 'source' command." 
+        echo "If the source code is not available it can be automatically downloaded from the repositories using the 'source' command."
         exit 1
     fi
 }
