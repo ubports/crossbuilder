@@ -235,7 +235,7 @@ new_container () {
         # wait for the container's network connection
         check_for_container_network
         exec_container_root apt update
-        exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts
+        exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts qemu-user-static
         exec_container_root adduser $USERNAME sudo
         # set empty password for the user
         exec_container_root passwd --delete $USERNAME
