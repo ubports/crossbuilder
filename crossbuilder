@@ -232,8 +232,18 @@ new_container () {
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
         exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
+        if [ "${TARGET_UBUNTU}" = "15.04" ]; then
+            # Fixup the SDK images; we should really try to get new SDK images for ubports
+            exec_container_root "sed -i 's/archive.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list"
+            exec_container_root "sed -i '/ports.ubuntu.com/d' /etc/apt/sources.list"
+        fi
         # wait for the container's network connection
         check_for_container_network
+        exec_container_root "add-apt-repository -y ppa:ubports-developers/overlay"
+        if [ "${TARGET_UBUNTU}" = "15.04" ]; then
+            exec_container_root "add-apt-repository 'deb http://repo.ubports.com vivid main' >> /etc/apt/sources.list"
+            wget -qO - "http://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
+        fi
         exec_container_root apt update
         exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts qemu-user-static
         exec_container_root adduser $USERNAME sudo
