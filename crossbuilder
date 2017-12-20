@@ -235,7 +235,7 @@ new_container () {
         if [ "${TARGET_UBUNTU}" = "15.04" ]; then
             # Fixup the SDK images; we should really try to get new SDK images for ubports
             exec_container_root "sed -i 's/archive.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list"
-            exec_container_root "sed -i '/ports.ubuntu.com/d' /etc/apt/sources.list"
+            exec_container_root "sed -i 's/ports.ubuntu.com\/ubuntu-ports/old-releases.ubuntu.com\/ubuntu/g' /etc/apt/sources.list"
         fi
         # wait for the container's network connection
         check_for_container_network
