@@ -220,7 +220,7 @@ new_container () {
         lxc start $LXD_CONTAINER || true
     else
         echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
-        lxc remote --protocol=simplestreams --public=true --accept-certificate=true add sdk https://sdk-images.canonical.com || true
+        lxc remote --protocol=simplestreams --public=true --accept-certificate=true add ubports-sdk https://sdk-images.ubports.com || true
         lxc init $LXD_IMAGE $LXD_CONTAINER
         if [ -n "$ENCRYPTED_HOME" ] ; then
             lxc config set $LXD_CONTAINER security.privileged true
@@ -232,18 +232,16 @@ new_container () {
         lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
         lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
         exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
+        # wait for the container's network connection
+        check_for_container_network
         if [ "${TARGET_UBUNTU}" = "15.04" ]; then
             # Fixup the SDK images; we should really try to get new SDK images for ubports
             exec_container_root "sed -i 's/archive.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list"
             exec_container_root "sed -i 's/ports.ubuntu.com\/ubuntu-ports/old-releases.ubuntu.com\/ubuntu/g' /etc/apt/sources.list"
-        fi
-        # wait for the container's network connection
-        check_for_container_network
-        exec_container_root "add-apt-repository -y ppa:ubports-developers/overlay"
-        if [ "${TARGET_UBUNTU}" = "15.04" ]; then
+            exec_container_root "add-apt-repository -y ppa:ubports-developers/overlay"
             exec_container_root "add-apt-repository 'deb http://repo.ubports.com vivid main' >> /etc/apt/sources.list"
-            wget -qO - "http://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
         fi
+        wget -qO - "http://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
         exec_container_root apt update
         exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts qemu-user-static
         exec_container_root adduser $USERNAME sudo
@@ -671,7 +669,7 @@ while [ "$1" != "" ]; do
 done
 
 if [ -z "$LXD_IMAGE" ] ; then
-    LXD_IMAGE=sdk:ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
+    LXD_IMAGE=ubports-sdk:ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
 fi
 
 COMMAND=$1
