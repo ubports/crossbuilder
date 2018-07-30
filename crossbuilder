@@ -387,7 +387,7 @@ install_foreign () {
             exec_container "echo 'Multi-arch: foreign' >> foreign/tmp/DEBIAN/control"
             exec_container "cd foreign && dpkg-deb -b tmp $dep*"
         fi
-        exec_container_root "dpkg -i $dep*"
+        exec_container_root "dpkg -i $SOURCE_PATH_CONTAINER/foreign/$dep*"
         exec_container "rm -r foreign/"
     done
 }
