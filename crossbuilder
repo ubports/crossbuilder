@@ -226,7 +226,12 @@ new_container () {
         if [ -n "$ENCRYPTED_HOME" ] ; then
             lxc config set $LXD_CONTAINER security.privileged true
         else
-            printf "lxc.id_map = g $GROUPID `id --group` 1\nlxc.id_map = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
+            if [ "$(lxc --version | cut -f1 -d. )" -ge "3" ]; then
+                IDMAP="lxc.idmap"
+            else
+                IDMAP="lxc.id_map"
+            fi
+            printf "$IDMAP = g $GROUPID `id --group` 1\n$IDMAP = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
         fi
         lxc start $LXD_CONTAINER
         lxc exec --env GROUPID=$GROUPID --env GROUPNAME=$GROUPNAME $LXD_CONTAINER -- addgroup --gid $GROUPID $GROUPNAME
