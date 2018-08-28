@@ -783,7 +783,7 @@ if [ -z "$COMMAND" ] ; then
         echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
     else
         echo "Could not find a device, will not deploy"
-        echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH"
+        echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH.${NC}"
     fi
     new_container
     install_dependencies
