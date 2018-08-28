@@ -636,10 +636,11 @@ DEVICE_PASSWORD=0000
 DEVICE_PASSWORD_FILE=~/.config/crossbuilder/device_password
 [ -e "$DEVICE_PASSWORD_FILE" ] && DEVICE_PASSWORD=$(cat $DEVICE_PASSWORD_FILE)
 
-DEVICE_STATE=`adb get-state`
+DEVICE_STATE=`adb get-state || true`
 if [ "$DEVICE_STATE" = "device" ] ; then
     TARGET_ARCH=$(adb shell "dpkg --print-architecture" | tr -d '\r')
     TARGET_UBUNTU=$(adb shell "lsb_release --release --short" | tr -d '\r')
+    DEPLOY=true
 fi;
 
 while [ "$1" != "" ]; do
@@ -778,11 +779,18 @@ if [ -z "$COMMAND" ] ; then
     detect_package
     check_changelog_exists
     variables
-    echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
+    if [ "$DEPLOY" ] ; then
+        echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
+    else
+        echo "Could not find a device, will not deploy"
+        echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH.${NC}"
+    fi
     new_container
     install_dependencies
     build
-    deploy_to_device
+    if [ "$DEPLOY" ] ; then
+        deploy_to_device
+    fi
 else
     PARAMETERS=$@
     case "$COMMAND" in
