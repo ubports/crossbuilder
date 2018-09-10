@@ -202,7 +202,7 @@ setup_lxd () {
             echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
             mkdir -p `dirname $LXD_POOL`
             truncate -s 32G $LXD_POOL
-            sudo zpool create lxd $LXD_POOL
+            sudo zpool create -f lxd $LXD_POOL
             sudo lxd init --auto --storage-backend zfs --storage-pool lxd
             # add automatic mount of zfs pool upon boot
             echo "zpool import -c /etc/zfs/zpool.cache -aN" | sudo tee /etc/rc.local
