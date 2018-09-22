@@ -196,8 +196,10 @@ setup_lxd () {
         echo
         if [ "$REPLY" = y ]
         then
-            echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
-            sudo apt-get install -y zfsutils-linux
+            if ! which zpool > /dev/null ; then
+                echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
+                sudo apt-get install -y zfsutils-linux
+            fi
             LXD_POOL=~/zfs/lxd.img
             echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
             mkdir -p `dirname $LXD_POOL`
