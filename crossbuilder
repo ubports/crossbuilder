@@ -175,7 +175,11 @@ ensure_lxd_subuid () {
         then
             sudo usermod --add-subuids 1000-1000 root
             sudo usermod --add-subgids 1000-1000 root
-            sudo service lxd restart
+            if which service > /dev/null ; then
+                sudo service lxd restart
+            else
+                sudo systemctl restart lxd
+            fi
         else
             exit 1
         fi
