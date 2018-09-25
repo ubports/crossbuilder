@@ -619,7 +619,7 @@ if ! which lxd > /dev/null ; then
     if [ "$REPLY" = y ]
     then
         echo "sudo apt-get install -y lxd"
-        sudo apt-get install -y lxd
+        sudo apt-get install -y lxd lxd-client
 #        sudo dpkg-reconfigure -p medium lxd
         setup_lxd
         ensure_lxd_subuid
