@@ -188,6 +188,21 @@ ensure_lxd_subuid () {
 
 setup_lxd () {
     echo "${POSITIVE_COLOR}Setting up LXD.${NC}"
+
+    if [ "$(lsb_release -cs)" = "xenial" ]; then
+        echo "${ERROR_COLOR}You are running Ubuntu 16.04 (xenial).${NC}"
+        echo "We have found an issue where the default LXD setup on 16.04 does not allow"
+        echo "containers to connect to the internet."
+        echo "In the following dialog, set up an IPv4 and IPv6 subnet for your bridge so they"
+        echo "will be able to connect to the internet. The default options presented will do"
+        echo "this for you."
+        echo "Press Enter to start"
+        read KEY
+        unset $KEY
+        # Ubuntu 16.04 specific workaround to set up
+        sudo dpkg-reconfigure -p medium lxd
+    fi
+
     if [ -n "$ENCRYPTED_HOME" ] ; then
         echo -n "${ERROR_COLOR}Your home folder is encrypted. $PROGRAM_NAME will use priviledged "
         echo -n "LXD containers and the default storage backend (slower).\n${NC}"
