@@ -348,6 +348,13 @@ restore_changelog () {
     mv /tmp/$PACKAGE-changelog.orig debian/changelog
 }
 
+workaround_multi_arch_deps () {
+    for package in python3-setuptools python3-flake8 dh_translations
+    do
+        sed -i "s/${package}\([, ]\)/${package}:native\1/" debian/control
+    done
+}
+
 ensure_upstream_tarball () {
     if grep quilt debian/source/format > /dev/null 2>&1 ; then
         echo "${POSITIVE_COLOR}Downloading upstream tarball of $PACKAGE in container.${NC}"
@@ -368,6 +375,7 @@ install_dependencies () {
         backup_changelog
         trap restore_changelog HUP INT TERM QUIT
         exec_container dch -v $NEW_PACKAGE_VERSION \'\'
+        workaround_multi_arch_deps
         if ! exec_container "DEB_BUILD_PROFILES='cross nocheck' dpkg-buildpackage -S -nc -d -I -Iobj-* -Idebian/tmp/* -I.bzr*" ; then
             restore_changelog
             exit 1
@@ -427,7 +435,7 @@ build_deb () {
     trap restore_changelog HUP INT TERM QUIT
 
     exec_container dch -v $NEW_PACKAGE_VERSION \'\'
-    if ! exec_container "DEB_BUILD_PROFILES='cross nocheck' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip nocheck' dpkg-buildpackage --target-arch $TARGET_ARCH -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b" ; then
+    if ! exec_container "DEB_BUILD_PROFILES='cross nocheck' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip nocheck' dpkg-buildpackage --target-arch $TARGET_ARCH -d -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b" ; then
         restore_changelog
         exit 1
     fi
