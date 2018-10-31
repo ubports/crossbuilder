@@ -136,6 +136,13 @@ variables () {
     POST_DEPLOY_SCRIPT=.crossbuilder/post_deploy
     HOST_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_MULTIARCH)
     TARGET_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
+    if [ "$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_ARCH)" != "$TARGET_ARCH" ]; then
+        DEB_BUILD_PROFILES="cross nocheck"
+        EXTRA_DEB_BUILD_OPTIONS="nocheck"
+    else
+        DEB_BUILD_PROFILES=""
+        EXTRA_DEB_BUILD_OPTIONS=""
+    fi
 }
 
 check_lxd_accessible () {
@@ -376,7 +383,7 @@ install_dependencies () {
         trap restore_changelog HUP INT TERM QUIT
         exec_container dch -v $NEW_PACKAGE_VERSION \'\'
         workaround_multi_arch_deps
-        if ! exec_container "DEB_BUILD_PROFILES='cross nocheck' dpkg-buildpackage -S -nc -d -I -Iobj-* -Idebian/tmp/* -I.bzr*" ; then
+        if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' dpkg-buildpackage -S -nc -d -I -Iobj-* -Idebian/tmp/* -I.bzr*" ; then
             restore_changelog
             exit 1
         fi
@@ -387,7 +394,7 @@ install_dependencies () {
         exec_container_root add-apt-repository --enable-source \"deb file://$SOURCE_REPOSITORY/ /\"
         exec_container_root "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000' | sudo tee /etc/apt/preferences.d/localrepo.pref"
         exec_container_root apt-get update --allow-unauthenticated
-        if ! exec_container_root apt-get build-dep -y --force-yes -o Apt::Build-Profiles=cross,nocheck -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
+        if ! exec_container_root apt-get build-dep -y --force-yes -o Apt::Build-Profiles=${DEB_BUILD_PROFILES/ /,} -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
             restore_changelog
             exit 1
         fi
@@ -435,7 +442,7 @@ build_deb () {
     trap restore_changelog HUP INT TERM QUIT
 
     exec_container dch -v $NEW_PACKAGE_VERSION \'\'
-    if ! exec_container "DEB_BUILD_PROFILES='cross nocheck' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip nocheck' dpkg-buildpackage --target-arch $TARGET_ARCH -d -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b" ; then
+    if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $EXTRA_DEB_BUILD_OPTIONS' dpkg-buildpackage --target-arch $TARGET_ARCH -d -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b" ; then
         restore_changelog
         exit 1
     fi
@@ -452,7 +459,7 @@ build_deb () {
 build_make_install () {
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
     exec_container "rm -f debian/*.debhelper.log"
-    exec_container "DEB_BUILD_PROFILES='cross nocheck' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip nocheck' fakeroot debian/rules install"
+    exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $EXTRA_DEB_BUILD_OPTIONS' fakeroot debian/rules install"
 }
 
 build () {
