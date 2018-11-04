@@ -394,7 +394,8 @@ install_dependencies () {
         exec_container_root add-apt-repository --enable-source \"deb file://$SOURCE_REPOSITORY/ /\"
         exec_container_root "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000' | sudo tee /etc/apt/preferences.d/localrepo.pref"
         exec_container_root apt-get update --allow-unauthenticated
-        if ! exec_container_root apt-get build-dep -y --force-yes -o Apt::Build-Profiles=${DEB_BUILD_PROFILES/ /,} -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
+        PROFILES_OPTION=$(echo "$DEB_BUILD_PROFILES" | sed "s/ /,/")
+        if ! exec_container_root apt-get build-dep -y --force-yes -o Apt::Build-Profiles=$PROFILES_OPTION -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
             restore_changelog
             exit 1
         fi
