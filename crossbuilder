@@ -282,8 +282,13 @@ new_container () {
         # set empty password for the user
         exec_container_root passwd --delete $USERNAME
         # FIXME: these should probably be set in the image already
+        if [ "$HOST_FARCH" != "$TARGET_FARCH" ]; then
+            QT_SELECT_ARCH="$HOST_FARCH-$TARGET_FARCH"
+        else
+            QT_SELECT_ARCH=$HOST_FARCH
+        fi
         exec_container_root "printf 'export PKG_CONFIG_PATH=/usr/lib/$TARGET_FARCH/pkgconfig\n\
-export QT_SELECT=qt5-$HOST_FARCH-$TARGET_FARCH\n\
+export QT_SELECT=qt5-$QT_SELECT_ARCH\n\
 export CC=$TARGET_FARCH-gcc\n\
 export CXX=$TARGET_FARCH-g++\n\
 ' >> /etc/profile.d/clickvars.sh"
