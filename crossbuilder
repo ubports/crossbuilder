@@ -69,6 +69,7 @@ display_help () {
     echo "  --architecture   - Architecture to build for [defaults to architecture of connected device, if none then armhf]."
     echo "  --ubuntu         - Version of Ubuntu to build for [defaults to version of connected device, if none then 16.04]."
     echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-16.04-amd64-armhf-dev)."
+    echo "  --privileged     - Use a privileged container (disabled by default)."
     echo "  --password       - User password of the device to deploy to [defaults to 0000]."
     echo "  --no-deb         - Do not build Debian packages and uses rsync to deploy the build artifacts."
     echo "  --deploy-path    - When deploying with --no-deb (rsync), installation path for the build artifacts [defaults to /]."
@@ -117,7 +118,7 @@ variables () {
     LXD_CONTAINER=$(echo $LXD_CONTAINER | cut -c 1-$((`getconf HOST_NAME_MAX` - 1)))
     USERNAME=`id --user --name`
     GROUPNAME=$USERNAME
-    if [ -n "$ENCRYPTED_HOME" ] ; then
+    if [ -n "$ENCRYPTED_HOME" ] || [ -n "$FORCE_PRIVILEGED" ] ; then
         USERID=`id --user`
         GROUPID=`id --group`
     else
@@ -251,7 +252,7 @@ new_container () {
         echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         lxc remote --protocol=simplestreams --public=true --accept-certificate=true add ubports-sdk https://sdk-images.ubports.com || true
         lxc init $LXD_IMAGE $LXD_CONTAINER
-        if [ -n "$ENCRYPTED_HOME" ] ; then
+        if [ -n "$ENCRYPTED_HOME" ] || [ -n "$FORCE_PRIVILEGED" ] ; then
             lxc config set $LXD_CONTAINER security.privileged true
         else
             if [ "$(lxc --version | cut -f1 -d. )" -ge "3" ]; then
@@ -714,6 +715,9 @@ while [ "$1" != "" ]; do
             ;;
             --deploy-path)
                 DEPLOY_PATH=$VALUE
+            ;;
+            --privileged)
+                FORCE_PRIVILEGED=1
             ;;
             --help)
                 display_help
