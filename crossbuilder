@@ -648,6 +648,10 @@ if stat --file-system $HOME | grep ecrypt ; then
     ENCRYPTED_HOME=1
 fi
 
+if [ `which lxc` = "/snap/bin/lxc" ]; then
+    FORCE_PRIVILEGED=1
+fi
+
 if ! which lxd > /dev/null ; then
     echo "${POSITIVE_COLOR}$PROGRAM_NAME uses LXD to download dependencies and build."
     echo -n "${POSITIVE_COLOR}Would you like to install LXD? (y/n) ${NC}"
