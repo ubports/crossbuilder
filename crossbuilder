@@ -70,6 +70,7 @@ display_help () {
     echo "  --ubuntu         - Version of Ubuntu to build for [defaults to version of connected device, if none then 16.04]."
     echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-16.04-amd64-armhf-dev)."
     echo "  --privileged     - Use a privileged container (disabled by default)."
+    echo "  --ephemeral      - Build using a short-lived container (disabled by default)."
     echo "  --password       - User password of the device to deploy to [defaults to 0000]."
     echo "  --no-deb         - Do not build Debian packages and uses rsync to deploy the build artifacts."
     echo "  --deploy-path    - When deploying with --no-deb (rsync), installation path for the build artifacts [defaults to /]."
@@ -108,6 +109,7 @@ variables () {
     LXD_IMAGE_NO_SDK=$(echo $LXD_IMAGE_NO_PREFIX | sed "s/ubuntu-sdk/usdk/")
     LXD_CONTAINER_COMPAT=builder-$PACKAGE-$LXD_IMAGE_NO_PREFIX
     LXD_CONTAINER=$PACKAGE-$LXD_IMAGE_NO_SDK
+    LXD_CONTAINER=$(echo $LXD_CONTAINER | sed "s/\./-/")
     if lxc info $LXD_CONTAINER_COMPAT > /dev/null 2>&1 ; then
         echo "${ERROR_COLOR}Containers are switching to shorter names, please manually delete your container: lxc delete -f $LXD_CONTAINER_COMPAT${NC}"
         echo "${ERROR_COLOR}Next time it will be called $LXD_CONTAINER.${NC}"
@@ -251,7 +253,7 @@ new_container () {
     else
         echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         lxc remote --protocol=simplestreams --public=true --accept-certificate=true add ubports-sdk https://sdk-images.ubports.com || true
-        lxc init $LXD_IMAGE $LXD_CONTAINER
+        lxc init $LXD_IMAGE $LXD_CONTAINER $EPHEMERAL_FLAG
         if [ -n "$ENCRYPTED_HOME" ] || [ -n "$FORCE_PRIVILEGED" ] ; then
             lxc config set $LXD_CONTAINER security.privileged true
         else
@@ -314,6 +316,11 @@ delete_container () {
 shell_container () {
     echo "${POSITIVE_COLOR}Entering shell in LXD container $LXD_CONTAINER.${NC}"
     lxc exec $LXD_CONTAINER -- su --login $USERNAME
+}
+
+stop_container () {
+    echo "${POSITIVE_COLOR}Stopping LXD container $LXD_CONTAINER.${NC}"
+    lxc stop -f $LXD_CONTAINER
 }
 
 enable_overlay_source () {
@@ -723,6 +730,10 @@ while [ "$1" != "" ]; do
             --privileged)
                 FORCE_PRIVILEGED=1
             ;;
+            --ephemeral)
+                EPHEMERAL_CONTAINER=1
+                EPHEMERAL_FLAG=--ephemeral
+            ;;
             --help)
                 display_help
                 exit 0
@@ -844,6 +855,7 @@ if [ -z "$COMMAND" ] ; then
     if [ "$DEPLOY" ] ; then
         deploy_to_device
     fi
+    stop_container
 else
     PARAMETERS=$@
     case "$COMMAND" in
@@ -947,6 +959,7 @@ else
                     PREVIOUS_DEBS_TARBALL=$DEBS_TARBALL
                 done
             fi
+            stop_container
         ;;
         clean)
             check_command_parameter_count 0 1
