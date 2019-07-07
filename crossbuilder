@@ -438,7 +438,7 @@ install_foreign () {
     do
         echo "Installing $dep"
         exec_container "mkdir -p foreign && cd foreign && apt-get download $dep && dpkg-deb -R $dep* tmp"
-        if ! exec_container "grep -q '^Multi-arch: foreign' foreign/tmp/DEBIAN/control" ; then
+        if ! exec_container "grep -qio '^Multi-arch: foreign' foreign/tmp/DEBIAN/control" ; then
             exec_container "echo 'Multi-arch: foreign' >> foreign/tmp/DEBIAN/control"
             exec_container "cd foreign && dpkg-deb -b tmp $dep*"
         fi
