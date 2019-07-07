@@ -671,6 +671,8 @@ if ! which lxd > /dev/null ; then
 #        sudo dpkg-reconfigure -p medium lxd
         setup_lxd
         ensure_lxd_subuid
+        newgrp lxd
+	sudo usermod -a -G lxd $(whoami)
         echo "${ERROR_COLOR}LXD is now setup but will only work after you restart your computer.${NC}"
         exit 0
     else
