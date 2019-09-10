@@ -280,7 +280,7 @@ new_container () {
         fi
         wget -qO - "http://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
         exec_container_root apt update
-        exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts qemu-user-static
+        exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static
         exec_container_root adduser $USERNAME sudo
         # set empty password for the user
         exec_container_root passwd --delete $USERNAME
@@ -368,15 +368,38 @@ restore_changelog () {
     mv /tmp/$PACKAGE-changelog.orig debian/changelog
 }
 
+backup_jenkinsfile_and_sourceloc() {
+    if [ -f Jenkinsfile ]; then
+        mv Jenkinsfile /tmp/$PACKAGE-Jenkinsfile
+    fi
+    if [ -f ubports.source_location ]; then
+        mv ubports.source_location /tmp/$PACKAGE-ubports.source_location
+    fi
+}
+
+restore_jenkinsfile_and_sourceloc() {
+    if [ -f /tmp/$PACKAGE-Jenkinsfile ]; then
+        mv /tmp/$PACKAGE-Jenkinsfile Jenkinsfile
+    fi
+    if [ -f /tmp/$PACKAGE-ubports.source_location ]; then
+        mv /tmp/$PACKAGE-ubports.source_location ubports.source_location
+    fi
+}
+
 workaround_multi_arch_deps () {
-    for package in python3-setuptools python3-flake8 dh_translations
+    for package in python3-setuptools python3-flake8 dh_translations xvfb qtdeclarative5-doc-html qtbase5-doc-html
     do
         sed -i "s/${package}\([, ]\)/${package}:native\1/" debian/control
     done
 }
 
 ensure_upstream_tarball () {
-    if grep quilt debian/source/format > /dev/null 2>&1 ; then
+    if [ -f ubports.source_location ]; then
+        SOURCE_URL=$(cat ubports.source_location | awk 'BEGIN{ RS = "" ; FS = "\n" }{print $1}')
+        TARGET_FILE=$(cat ubports.source_location | awk 'BEGIN{ RS = "" ; FS = "\n" }{print $2}')
+        echo "${POSITIVE_COLOR}Downloading upstream source tarball of $PACKAGE in container to $TARGET_FILE.${NC}"
+        exec_container "cd $USERDIR && wget --continue -O $TARGET_FILE $SOURCE_URL"
+    elif grep quilt debian/source/format > /dev/null 2>&1 ; then
         echo "${POSITIVE_COLOR}Downloading upstream tarball of $PACKAGE in container.${NC}"
         enable_overlay_source
         # FIXME: try using dget instead so that we can specify a precise version
@@ -385,6 +408,7 @@ ensure_upstream_tarball () {
 }
 
 install_dependencies () {
+    echo "${POSITIVE_COLOR}Installing $TARGET_ARCH (host $HOST_ARCH) build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
     # install build dependencies in container
     if ! exec_container test -e $USERDIR/dependencies_installed ; then
         ensure_upstream_tarball
@@ -393,13 +417,16 @@ install_dependencies () {
         lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$SOURCE_REPOSITORY/
 
         backup_changelog
+        backup_jenkinsfile_and_sourceloc
         trap restore_changelog HUP INT TERM QUIT
         exec_container dch -v $NEW_PACKAGE_VERSION \'\'
         workaround_multi_arch_deps
         if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' dpkg-buildpackage -S -nc -d -I -Iobj-* -Idebian/tmp/* -I.bzr*" ; then
             restore_changelog
+            restore_jenkinsfile_and_sourceloc
             exit 1
         fi
+        restore_jenkinsfile_and_sourceloc
         if ! exec_container "mv -f $USERDIR/$PACKAGE*.* $SOURCE_REPOSITORY/" ; then
             exec_container "rm -f $USERDIR/$PACKAGE*.*"
         fi
@@ -408,7 +435,7 @@ install_dependencies () {
         exec_container_root "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000' | sudo tee /etc/apt/preferences.d/localrepo.pref"
         exec_container_root apt-get update --allow-unauthenticated
         PROFILES_OPTION=$(echo "$DEB_BUILD_PROFILES" | sed "s/ /,/")
-        if ! exec_container_root apt-get build-dep -y --force-yes -o Apt::Build-Profiles=$PROFILES_OPTION -a$TARGET_ARCH $PACKAGE=$NEW_PACKAGE_VERSION ; then
+        if ! exec_container_root "mk-build-deps -t 'apt-get -o Debug::pkgProblemResolver=yes -y' -i --host-arch $TARGET_ARCH $SOURCE_PATH_CONTAINER/debian/control"; then
             restore_changelog
             exit 1
         fi
@@ -456,7 +483,7 @@ build_deb () {
     trap restore_changelog HUP INT TERM QUIT
 
     exec_container dch -v $NEW_PACKAGE_VERSION \'\'
-    if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $EXTRA_DEB_BUILD_OPTIONS' dpkg-buildpackage --target-arch $TARGET_ARCH" ; then
+    if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $EXTRA_DEB_BUILD_OPTIONS' dpkg-buildpackage --target-arch $TARGET_ARCH -d -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b" ; then
         restore_changelog
         exit 1
     fi
