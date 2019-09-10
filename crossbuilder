@@ -118,6 +118,7 @@ variables () {
 
     # LXD container name can only have HOST_NAME_MAX characters
     LXD_CONTAINER=$(echo $LXD_CONTAINER | cut -c 1-$((`getconf HOST_NAME_MAX` - 1)))
+    LXD_CONTAINER_FAILURE_MSG="${ERROR_COLOR}Failed to start container. See 'lxc info ${LXD_CONTAINER} --show-log'${NC}"
     USERNAME=`id --user --name`
     GROUPNAME=$USERNAME
     if [ -n "$ENCRYPTED_HOME" ] || [ -n "$FORCE_PRIVILEGED" ] ; then
@@ -149,8 +150,18 @@ variables () {
 }
 
 check_lxd_accessible () {
+    # /bin/lxd is replaced with a script which tells you to install the lxd snap
+    # on later versions of Ubuntu.
+    LXD=`which lxd`
+    if (grep 'snap install lxd' "$LXD" >/dev/null) && [ ! -f /snap/bin/lxd ] ; then
+        $LXD
+        exit 1
+    fi
+
     if ! lxc info > /dev/null 2>&1 ; then
-        echo "${ERROR_COLOR}LXD was installed but is not accessible. Please restart your computer.${NC}"
+        echo "${ERROR_COLOR}LXD was installed but is not accessible."
+        echo "Check the 'lxd' group exists and you are a member, then restart your computer."
+        echo "For more information, run 'lxc info'.${NC}"
         exit 1
     fi
 }
@@ -187,10 +198,13 @@ ensure_lxd_subuid () {
             sudo usermod --add-subgids 1000-1000 root
             if which service > /dev/null ; then
                 sudo service lxd restart
+            elif which snap > /dev/null && snap connections lxd > /dev/null ; then
+                sudo snap restart lxd
             else
                 sudo systemctl restart lxd
             fi
         else
+            echo "${ERROR_COLOR}Unable to set up LXD for use in crossbuilder. Subuid setup refused.${NC}"
             exit 1
         fi
     fi
@@ -248,8 +262,25 @@ new_container () {
     # setup the building container
     if lxc info $LXD_CONTAINER > /dev/null 2>&1 ; then
         echo "${POSITIVE_COLOR}LXD container $LXD_CONTAINER already exists.${NC}"
-        # FIXME: check if the container is already started
-        lxc start $LXD_CONTAINER || true
+
+        STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
+        if [ $STATUS = 'Stopped' ]; then
+            # lxc start may give a failure code. It also may not, so we check
+            # again in a bit.
+            if ! lxc start $LXD_CONTAINER; then
+                echo $LXD_CONTAINER_FAILURE_MSG
+                exit 1
+            fi
+        fi
+
+        # Unfortunately we need to check again. We check for Started this time
+        # because the monitor may be hung with the container failing, which will
+        # give us much different output
+        STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
+        if [ "$STATUS" != 'Running' ]; then
+            echo $LXD_CONTAINER_FAILURE_MSG
+            exit 1
+        fi
     else
         echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         lxc remote --protocol=simplestreams --public=true --accept-certificate=true add ubports-sdk https://sdk-images.ubports.com || true
@@ -552,7 +583,7 @@ check_for_device_network() {
         fi
     done
     if [ $NETWORK_UP -ne 1 ] ; then
-        echo "${ERROR_COLOR}Device connected is not connected to the Internet.${NC}"
+        echo "${ERROR_COLOR}The connected device is not connected to the Internet.${NC}"
         exit 1
     fi
 }
@@ -682,7 +713,7 @@ if stat --file-system $HOME | grep ecrypt ; then
     ENCRYPTED_HOME=1
 fi
 
-if [ `which lxc` = "/snap/bin/lxc" ]; then
+if [ -e "/snap/bin/lxc" ]; then
     FORCE_PRIVILEGED=1
 fi
 
@@ -693,13 +724,12 @@ if ! which lxd > /dev/null ; then
     echo
     if [ "$REPLY" = y ]
     then
-        echo "sudo apt-get install -y lxd"
+        echo "sudo apt-get install -y lxd lxd-client"
         sudo apt-get install -y lxd lxd-client
-#        sudo dpkg-reconfigure -p medium lxd
         setup_lxd
         ensure_lxd_subuid
         newgrp lxd
-	sudo usermod -a -G lxd $(whoami)
+	    sudo usermod -a -G lxd $(whoami)
         echo "${ERROR_COLOR}LXD is now setup but will only work after you restart your computer.${NC}"
         exit 0
     else
