@@ -316,7 +316,9 @@ create_container () {
     fi
     wget -qO - "http://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
     exec_container_root apt update
-    exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static
+    exec_container_root apt install -y \
+        sudo debhelper ccache software-properties-common devscripts equivs \
+        qemu-user-static pkg-create-dbgsym
     exec_container_root adduser $USERNAME sudo
     # set empty password for the user
     exec_container_root passwd --delete $USERNAME
@@ -544,8 +546,10 @@ build_deb () {
     echo "${POSITIVE_COLOR}Packing build artifacts in $DEBS_TARBALL.${NC}"
     rm -f $DEBS_TARBALL_ROOT*
     exec_container "tar cf ../$DEBS_TARBALL ../*.deb"
+    exec_container "tar rf ../$DEBS_TARBALL ../*.ddeb || true"
     lxc file pull $LXD_CONTAINER$USERDIR/$DEBS_TARBALL .
     exec_container "rm ../*.deb ../*.changes ../$DEBS_TARBALL"
+    exec_container "rm ../*.ddeb || true"
 }
 
 build_make_install () {
