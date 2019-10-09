@@ -31,6 +31,9 @@
 # - check if a newer version of the container's image is available
 # - option to cleanup device (undeploy)
 
+#make sure we work with english outputs
+export LC_ALL=C
+
 set -e
 
 RED='\033[0;31m'
@@ -1040,3 +1043,6 @@ else
         ;;
     esac
 fi;
+
+#reset locale
+LC_ALL=
