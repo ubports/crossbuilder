@@ -1043,6 +1043,3 @@ else
         ;;
     esac
 fi;
-
-#reset locale
-LC_ALL=
