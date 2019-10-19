@@ -74,6 +74,7 @@ display_help () {
     echo "  --password       - User password of the device to deploy to [defaults to 0000]."
     echo "  --no-deb         - Do not build Debian packages and uses rsync to deploy the build artifacts."
     echo "  --deploy-path    - When deploying with --no-deb (rsync), installation path for the build artifacts [defaults to /]."
+    echo "  --parallel       - Set parallelism of the build. Defaults to the number of logical core + 1."
 }
 
 
@@ -132,7 +133,6 @@ variables () {
     SOURCE_REPOSITORY=$USERDIR/source_repository
     SCRIPT_DIR=`dirname $0`
     CREATE_REPO_SCRIPT=create_repository.sh
-    PARALLEL_BUILD=$((`nproc` + 1))
     MOUNTED_DIRECTORY=$PWD
     MOUNT_POINT=$USERDIR/$PACKAGE
     SOURCE_PATH_LOCAL=$MOUNTED_DIRECTORY
@@ -765,6 +765,8 @@ HOST_ARCH=`dpkg --print-architecture`
 TARGET_ARCH=armhf
 TARGET_UBUNTU=16.04
 
+PARALLEL_BUILD=$((`nproc` + 1))
+
 DEVICE_PASSWORD=0000
 DEVICE_PASSWORD_FILE=~/.config/crossbuilder/device_password
 [ -e "$DEVICE_PASSWORD_FILE" ] && DEVICE_PASSWORD=$(cat $DEVICE_PASSWORD_FILE)
@@ -812,6 +814,9 @@ while [ "$1" != "" ]; do
             --ephemeral)
                 EPHEMERAL_CONTAINER=1
                 EPHEMERAL_FLAG=--ephemeral
+            ;;
+            --parallel)
+                PARALLEL_BUILD=$VALUE
             ;;
             --help)
                 display_help
