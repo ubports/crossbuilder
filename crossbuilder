@@ -1017,6 +1017,7 @@ else
                 variables
                 ensure_container
                 install_dependencies
+                clean
                 build
             else
                 if [ -n "$NO_DEB" ] ; then
@@ -1033,6 +1034,7 @@ else
                         exec_container rm -f $USERDIR/dependencies_installed
                     fi
                     install_dependencies
+                    clean
                     build
                     PREVIOUS_BUILD_FOLDER=$PWD
                     PREVIOUS_DEBS_TARBALL=$DEBS_TARBALL
