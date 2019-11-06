@@ -257,86 +257,95 @@ setup_lxd () {
     fi
 }
 
-
-new_container () {
-    # setup the building container
-    if lxc info $LXD_CONTAINER > /dev/null 2>&1 ; then
-        echo "${POSITIVE_COLOR}LXD container $LXD_CONTAINER already exists.${NC}"
-
-        STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
-        if [ $STATUS = 'Stopped' ]; then
-            # lxc start may give a failure code. It also may not, so we check
-            # again in a bit.
-            if ! lxc start $LXD_CONTAINER; then
-                echo $LXD_CONTAINER_FAILURE_MSG
-                exit 1
-            fi
-        fi
-
-        # Unfortunately we need to check again. We check for Started this time
-        # because the monitor may be hung with the container failing, which will
-        # give us much different output
-        STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
-        if [ "$STATUS" != 'Running' ]; then
-            echo $LXD_CONTAINER_FAILURE_MSG
-            exit 1
-        fi
-    else
-        echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
-        lxc remote --protocol=simplestreams --public=true --accept-certificate=true add ubports-sdk https://sdk-images.ubports.com || true
-        lxc init $LXD_IMAGE $LXD_CONTAINER $EPHEMERAL_FLAG
-        if [ -n "$ENCRYPTED_HOME" ] || [ -n "$FORCE_PRIVILEGED" ] ; then
-            lxc config set $LXD_CONTAINER security.privileged true
-        else
-            if [ "$(lxc --version | cut -f1 -d. )" -ge "3" ]; then
-                IDMAP="lxc.idmap"
-            else
-                IDMAP="lxc.id_map"
-            fi
-            printf "$IDMAP = g $GROUPID `id --group` 1\n$IDMAP = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
-        fi
-        lxc start $LXD_CONTAINER
-        lxc exec --env GROUPID=$GROUPID --env GROUPNAME=$GROUPNAME $LXD_CONTAINER -- addgroup --gid $GROUPID $GROUPNAME
-        lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
-        lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
-        exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
-        # wait for the container's network connection
-        check_for_container_network
-        if [ "${TARGET_UBUNTU}" = "15.04" ]; then
-            # Fixup the SDK images; we should really try to get new SDK images for ubports
-            exec_container_root "sed -i 's/archive.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list"
-            exec_container_root "sed -i 's/ports.ubuntu.com\/ubuntu-ports/old-releases.ubuntu.com\/ubuntu/g' /etc/apt/sources.list"
-            exec_container_root "add-apt-repository -y ppa:ubports-developers/overlay"
-            exec_container_root "add-apt-repository 'deb http://repo.ubports.com vivid main' >> /etc/apt/sources.list"
-        fi
-        wget -qO - "http://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
-        exec_container_root apt update
-        exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static
-        exec_container_root adduser $USERNAME sudo
-        # set empty password for the user
-        exec_container_root passwd --delete $USERNAME
-        # FIXME: these should probably be set in the image already
-        if [ "$HOST_FARCH" != "$TARGET_FARCH" ]; then
-            QT_SELECT_ARCH="$HOST_FARCH-$TARGET_FARCH"
-        else
-            QT_SELECT_ARCH=$HOST_FARCH
-        fi
-        exec_container_root "printf 'export PKG_CONFIG_PATH=/usr/lib/$TARGET_FARCH/pkgconfig\n\
-export QT_SELECT=qt5-$QT_SELECT_ARCH\n\
-export CC=$TARGET_FARCH-gcc\n\
-export CXX=$TARGET_FARCH-g++\n\
-' >> /etc/profile.d/clickvars.sh"
-        # FIXME: image should have environment variables set from executing:
-        # dpkg-architecture --print-set --target-arch armhf
-
-    fi
-
+config_container_dir_mount () {
     if ! lxc config device get $LXD_CONTAINER current_dir_mount disk 2> /dev/null ; then
         echo "${POSITIVE_COLOR}Mounting $MOUNTED_DIRECTORY in container.${NC}"
         lxc config device add $LXD_CONTAINER current_dir_mount disk source=$MOUNTED_DIRECTORY path=$MOUNT_POINT
     else
         lxc config device set $LXD_CONTAINER current_dir_mount source $MOUNTED_DIRECTORY
     fi
+}
+
+start_container () {
+    STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
+    if [ $STATUS = 'Stopped' ]; then
+        # lxc start may give a failure code. It also may not, so we check
+        # again in a bit.
+        if ! lxc start $LXD_CONTAINER; then
+            echo $LXD_CONTAINER_FAILURE_MSG
+            exit 1
+        fi
+    fi
+
+    # Unfortunately we need to check again. We check for Started this time
+    # because the monitor may be hung with the container failing, which will
+    # give us much different output
+    STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
+    if [ "$STATUS" != 'Running' ]; then
+        echo $LXD_CONTAINER_FAILURE_MSG
+        exit 1
+    fi
+}
+
+create_container () {
+    lxc remote --protocol=simplestreams --public=true --accept-certificate=true add ubports-sdk https://sdk-images.ubports.com || true
+    lxc init $LXD_IMAGE $LXD_CONTAINER $EPHEMERAL_FLAG
+    if [ -n "$ENCRYPTED_HOME" ] || [ -n "$FORCE_PRIVILEGED" ] ; then
+        lxc config set $LXD_CONTAINER security.privileged true
+    else
+        if [ "$(lxc --version | cut -f1 -d. )" -ge "3" ]; then
+            IDMAP="lxc.idmap"
+        else
+            IDMAP="lxc.id_map"
+        fi
+        printf "$IDMAP = g $GROUPID `id --group` 1\n$IDMAP = u $USERID `id --user` 1" | lxc config set $LXD_CONTAINER raw.lxc -
+    fi
+    lxc start $LXD_CONTAINER
+    lxc exec --env GROUPID=$GROUPID --env GROUPNAME=$GROUPNAME $LXD_CONTAINER -- addgroup --gid $GROUPID $GROUPNAME
+    lxc exec --env GROUPID=$GROUPID --env USERNAME=$USERNAME --env USERID=$USERID $LXD_CONTAINER -- adduser --disabled-password --gecos "" --uid $USERID --gid $GROUPID $USERNAME
+    lxc exec --env USERNAME=$USERNAME $LXD_CONTAINER -- usermod -aG sudo $USERNAME
+    exec_container_root "sed -i 's/ENV_PATH.*PATH=/ENV_PATH\tPATH=\/usr\/lib\/ccache:/' /etc/login.defs"
+    # wait for the container's network connection
+    check_for_container_network
+    if [ "${TARGET_UBUNTU}" = "15.04" ]; then
+        # Fixup the SDK images; we should really try to get new SDK images for ubports
+        exec_container_root "sed -i 's/archive.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list"
+        exec_container_root "sed -i 's/ports.ubuntu.com\/ubuntu-ports/old-releases.ubuntu.com\/ubuntu/g' /etc/apt/sources.list"
+        exec_container_root "add-apt-repository -y ppa:ubports-developers/overlay"
+        exec_container_root "add-apt-repository 'deb http://repo.ubports.com vivid main' >> /etc/apt/sources.list"
+    fi
+    wget -qO - "http://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
+    exec_container_root apt update
+    exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static
+    exec_container_root adduser $USERNAME sudo
+    # set empty password for the user
+    exec_container_root passwd --delete $USERNAME
+    # FIXME: these should probably be set in the image already
+    if [ "$HOST_FARCH" != "$TARGET_FARCH" ]; then
+        QT_SELECT_ARCH="$HOST_FARCH-$TARGET_FARCH"
+    else
+        QT_SELECT_ARCH=$HOST_FARCH
+    fi
+    exec_container_root "printf 'export PKG_CONFIG_PATH=/usr/lib/$TARGET_FARCH/pkgconfig\n\
+export QT_SELECT=qt5-$QT_SELECT_ARCH\n\
+export CC=$TARGET_FARCH-gcc\n\
+export CXX=$TARGET_FARCH-g++\n\
+' >> /etc/profile.d/clickvars.sh"
+    # FIXME: image should have environment variables set from executing:
+    # dpkg-architecture --print-set --target-arch armhf
+}
+
+ensure_container () {
+    # setup the building container
+    if lxc info $LXD_CONTAINER > /dev/null 2>&1 ; then
+        echo "${POSITIVE_COLOR}LXD container $LXD_CONTAINER already exists.${NC}"
+        start_container
+    else
+        echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
+        create_container
+    fi
+
+    config_container_dir_mount
 }
 
 delete_container () {
@@ -908,7 +917,7 @@ if [ -z "$COMMAND" ] ; then
         echo "Could not find a device, will not deploy"
         echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH.${NC}"
     fi
-    new_container
+    ensure_container
     install_dependencies
     build
     if [ "$DEPLOY" ] ; then
@@ -945,7 +954,7 @@ else
             check_command_parameter_count 0 1
             enter_new_or_detect_package $1
             variables
-            new_container
+            ensure_container
         ;;
         delete)
             check_command_parameter_count 0 1
@@ -957,7 +966,7 @@ else
             check_command_parameter_count 0 1
             enter_new_or_detect_package $1
             variables
-            new_container
+            ensure_container
             shell_container
         ;;
         source)
@@ -971,7 +980,7 @@ else
             mkdir -p $PACKAGE
             cd $PACKAGE
             variables
-            new_container
+            ensure_container
             get_source_package
         ;;
         dependencies)
@@ -979,7 +988,7 @@ else
             check_command_parameter_count 0 1
             enter_or_detect_package $1
             variables
-            new_container
+            ensure_container
             exec_container rm -f $USERDIR/dependencies_installed
             install_dependencies
         ;;
@@ -995,7 +1004,7 @@ else
             if [ -z "$PACKAGES" ] ; then
                 enter_or_detect_package $1
                 variables
-                new_container
+                ensure_container
                 install_dependencies
                 build
             else
@@ -1007,7 +1016,7 @@ else
                 for package in $PACKAGES ; do
                     enter_or_detect_package $package
                     variables
-                    new_container
+                    ensure_container
                     if [ -n "$PREVIOUS_BUILD_FOLDER" ] ; then
                         copy_build_to_container $PREVIOUS_BUILD_FOLDER $PREVIOUS_DEBS_TARBALL
                         exec_container rm -f $USERDIR/dependencies_installed
@@ -1024,6 +1033,7 @@ else
             check_command_parameter_count 0 1
             enter_or_detect_package $1
             variables
+            ## start_container
             clean
         ;;
         deploy)
