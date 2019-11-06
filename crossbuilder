@@ -773,7 +773,7 @@ DEVICE_PASSWORD_FILE=~/.config/crossbuilder/device_password
 
 DEVICE_STATE=`adb get-state || true`
 if [ "$DEVICE_STATE" = "device" ] ; then
-    DEVICE_ARCH=$(adb shell "dpkg --print-architecture" | tr -d '\r')
+    DEVICE_ARCH=$(adb shell "dpkg --print-architecture" 2>&1| tr -d '\r')
     if echo "$DEVICE_ARCH" | grep -vq "not found"; then
         TARGET_ARCH=$DEVICE_ARCH
         TARGET_UBUNTU=$(adb shell "lsb_release --release --short" | tr -d '\r')
