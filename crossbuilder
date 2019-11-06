@@ -348,6 +348,17 @@ ensure_container () {
     config_container_dir_mount
 }
 
+start_container_if_exists () {
+    if lxc info $LXD_CONTAINER > /dev/null 2>&1 ; then
+        echo "${POSITIVE_COLOR}Starting LXD container $LXD_CONTAINER.${NC}"
+        start_container
+        config_container_dir_mount
+    else
+        echo "${ERROR_COLOR}LXD container $LXD_CONTAINER doesn't exist.${NC}"
+        exit 1
+    fi
+}
+
 delete_container () {
     echo "${POSITIVE_COLOR}Deleting LXD container $LXD_CONTAINER.${NC}"
     lxc delete -f $LXD_CONTAINER
@@ -1033,7 +1044,7 @@ else
             check_command_parameter_count 0 1
             enter_or_detect_package $1
             variables
-            ## start_container
+            start_container_if_exists
             clean
         ;;
         deploy)
