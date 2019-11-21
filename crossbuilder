@@ -469,38 +469,17 @@ install_dependencies () {
     if ! exec_container test -e $USERDIR/dependencies_installed ; then
         ensure_upstream_tarball
         echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
-        exec_container mkdir -p $SOURCE_REPOSITORY
-        lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$SOURCE_REPOSITORY/
-
-        backup_changelog
-        backup_jenkinsfile_and_sourceloc
-        trap restore_changelog HUP INT TERM QUIT
-        exec_container dch -v $NEW_PACKAGE_VERSION \'\'
         workaround_multi_arch_deps
-        if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' dpkg-buildpackage -S -nc -d -I -Iobj-* -Idebian/tmp/* -I.bzr*" ; then
-            restore_changelog
-            restore_jenkinsfile_and_sourceloc
-            exit 1
-        fi
-        restore_jenkinsfile_and_sourceloc
-        if ! exec_container "mv -f $USERDIR/$PACKAGE*.* $SOURCE_REPOSITORY/" ; then
-            exec_container "rm -f $USERDIR/$PACKAGE*.*"
-        fi
-        exec_container $SOURCE_REPOSITORY/$CREATE_REPO_SCRIPT $SOURCE_REPOSITORY
-        exec_container_root add-apt-repository --enable-source \"deb file://$SOURCE_REPOSITORY/ /\"
-        exec_container_root "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000' | sudo tee /etc/apt/preferences.d/localrepo.pref"
         exec_container_root apt-get update --allow-unauthenticated
+        # TODO: add build profiles to mk-build-deps once wishlist bug
+        # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=894732 is fixed and
+        # propagated to Ubuntu version we will use in the future.
         PROFILES_OPTION=$(echo "$DEB_BUILD_PROFILES" | sed "s/ /,/")
-        if ! exec_container_root \
-                "mk-build-deps \
-                    -t 'apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y' \
-                    -i --host-arch $TARGET_ARCH \
-                    $SOURCE_PATH_CONTAINER/debian/control"; then
-            restore_changelog
-            exit 1
-        fi
-
-        restore_changelog
+        exec_container_root \
+            "mk-build-deps \
+                -t 'apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y' \
+                -i --host-arch $TARGET_ARCH \
+                $SOURCE_PATH_CONTAINER/debian/control"
 
         # workaround various issues with qmake cross compilation
         # FIXME: this should be integrated in the binary package qt5-qmake-$TARGET_FARCH
