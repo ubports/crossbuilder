@@ -491,7 +491,11 @@ install_dependencies () {
         exec_container_root "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000' | sudo tee /etc/apt/preferences.d/localrepo.pref"
         exec_container_root apt-get update --allow-unauthenticated
         PROFILES_OPTION=$(echo "$DEB_BUILD_PROFILES" | sed "s/ /,/")
-        if ! exec_container_root "mk-build-deps -t 'apt-get -o Debug::pkgProblemResolver=yes -y' -i --host-arch $TARGET_ARCH $SOURCE_PATH_CONTAINER/debian/control"; then
+        if ! exec_container_root \
+                "mk-build-deps \
+                    -t 'apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y' \
+                    -i --host-arch $TARGET_ARCH \
+                    $SOURCE_PATH_CONTAINER/debian/control"; then
             restore_changelog
             exit 1
         fi
