@@ -518,8 +518,10 @@ install_foreign () {
 build_deb () {
     # build package in container
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
-#    exec_container "rm -f ../*.deb"
+    exec_container "rm -f ../*.deb ../*.changes ../$DEBS_TARBALL"
+    exec_container "rm -f ../*.ddeb"
     exec_container "rm -f debian/*.debhelper.log"
+    exec_container "rm -f debian/files"
     backup_changelog
     trap restore_changelog HUP INT TERM QUIT
 
@@ -536,8 +538,6 @@ build_deb () {
     exec_container "tar cf ../$DEBS_TARBALL ../*.deb"
     exec_container "tar rf ../$DEBS_TARBALL ../*.ddeb || true"
     lxc file pull $LXD_CONTAINER$USERDIR/$DEBS_TARBALL .
-    exec_container "rm ../*.deb ../*.changes ../$DEBS_TARBALL"
-    exec_container "rm ../*.ddeb || true"
 }
 
 build_make_install () {
