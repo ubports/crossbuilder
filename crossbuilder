@@ -150,6 +150,8 @@ variables () {
         DEB_BUILD_PROFILES=""
         EXTRA_DEB_BUILD_OPTIONS=""
     fi
+    TMP_DIR="$(mktemp -d --tmpdir crossbuilder.XXXXXX)"
+    trap "rm -r $TMP_DIR" HUP INT TERM QUIT EXIT
 }
 
 check_lxd_accessible () {
@@ -417,28 +419,28 @@ get_source_package () {
 }
 
 backup_changelog () {
-    cp debian/changelog /tmp/$PACKAGE-changelog.orig
+    cp debian/changelog ${TMP_DIR}/$PACKAGE-changelog.orig
 }
 
 restore_changelog () {
-    mv /tmp/$PACKAGE-changelog.orig debian/changelog
+    mv ${TMP_DIR}/$PACKAGE-changelog.orig debian/changelog
 }
 
 backup_jenkinsfile_and_sourceloc() {
     if [ -f Jenkinsfile ]; then
-        mv Jenkinsfile /tmp/$PACKAGE-Jenkinsfile
+        mv Jenkinsfile ${TMP_DIR}/$PACKAGE-Jenkinsfile
     fi
     if [ -f ubports.source_location ]; then
-        mv ubports.source_location /tmp/$PACKAGE-ubports.source_location
+        mv ubports.source_location ${TMP_DIR}/$PACKAGE-ubports.source_location
     fi
 }
 
 restore_jenkinsfile_and_sourceloc() {
-    if [ -f /tmp/$PACKAGE-Jenkinsfile ]; then
-        mv /tmp/$PACKAGE-Jenkinsfile Jenkinsfile
+    if [ -f ${TMP_DIR}/$PACKAGE-Jenkinsfile ]; then
+        mv ${TMP_DIR}/$PACKAGE-Jenkinsfile Jenkinsfile
     fi
-    if [ -f /tmp/$PACKAGE-ubports.source_location ]; then
-        mv /tmp/$PACKAGE-ubports.source_location ubports.source_location
+    if [ -f ${TMP_DIR}/$PACKAGE-ubports.source_location ]; then
+        mv ${TMP_DIR}/$PACKAGE-ubports.source_location ubports.source_location
     fi
 }
 
