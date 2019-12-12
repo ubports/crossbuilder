@@ -445,9 +445,18 @@ restore_jenkinsfile_and_sourceloc() {
 }
 
 workaround_multi_arch_deps () {
+    DEBIAN_CONTROL="$1"
     for package in python3-setuptools python3-flake8 dh_translations xvfb qtdeclarative5-doc-html qtbase5-doc-html
     do
-        sed -i "s/${package}\([, ]\)/${package}:native\1/" debian/control
+        sed -i "s/${package}\([, ]\)/${package}:native\1/" "${DEBIAN_CONTROL}"
+    done
+}
+
+apply_build_profiles_to_debian_control () {
+    DEBIAN_CONTROL="$1"
+    for profile in $DEB_BUILD_PROFILES
+    do
+        sed -i -e "/^ \+\S\+ .*<\!${profile}>/d" -e "s/: *\S\+ .*<\!${profile}>[^,]*,/:,/" "${DEBIAN_CONTROL}"
     done
 }
 
@@ -471,17 +480,23 @@ install_dependencies () {
     if ! exec_container test -e $USERDIR/dependencies_installed ; then
         ensure_upstream_tarball
         echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
-        workaround_multi_arch_deps
+        cp debian/control "${TMP_DIR}/"
+        workaround_multi_arch_deps ${TMP_DIR}/control
         exec_container_root apt-get update --allow-unauthenticated
         # TODO: add build profiles to mk-build-deps once wishlist bug
         # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=894732 is fixed and
         # propagated to Ubuntu version we will use in the future.
+        # Meanwhile, have mk-build-deps operate on a stripped-down debian/control
+        apply_build_profiles_to_debian_control ${TMP_DIR}/control
+        lxc file push ${TMP_DIR}/control $LXD_CONTAINER$USERDIR/patched_debian_control
+
         PROFILES_OPTION=$(echo "$DEB_BUILD_PROFILES" | sed "s/ /,/")
         exec_container_root \
             "mk-build-deps \
                 -t 'apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y' \
                 -i --host-arch $TARGET_ARCH \
-                $SOURCE_PATH_CONTAINER/debian/control"
+                $USERDIR/patched_debian_control"
+        rm ${TMP_DIR}/control
 
         # workaround various issues with qmake cross compilation
         # FIXME: this should be integrated in the binary package qt5-qmake-$TARGET_FARCH
