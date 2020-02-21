@@ -144,8 +144,8 @@ variables () {
     HOST_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_MULTIARCH)
     TARGET_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
     if [ "$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_ARCH)" != "$TARGET_ARCH" ]; then
-        DEB_BUILD_PROFILES="cross nocheck"
-        EXTRA_DEB_BUILD_OPTIONS="nocheck"
+        DEB_BUILD_PROFILES="cross nocheck nodoc"
+        EXTRA_DEB_BUILD_OPTIONS="nocheck nodoc"
     else
         DEB_BUILD_PROFILES=""
         EXTRA_DEB_BUILD_OPTIONS=""
