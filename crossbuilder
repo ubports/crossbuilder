@@ -580,7 +580,7 @@ copy_build_to_container () {
 
 clean () {
     echo "${POSITIVE_COLOR}Cleaning previous build of $PACKAGE for $TARGET_ARCH.${NC}"
-    exec_container debian/rules clean
+    exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' debian/rules clean"
 }
 
 check_for_container_network() {
