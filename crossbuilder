@@ -385,17 +385,16 @@ enable_overlay_source () {
     OVERLAY_APT="/etc/apt/sources.list.d/ci-train-ppa-service-ubuntu-stable-phone-overlay-vivid.list"
     if exec_container_root "grep '#.*deb-src' $OVERLAY_APT" ; then
         exec_container_root "sed -i 's/#.*deb-src/deb-src/' $OVERLAY_APT"
-        exec_container_root apt-get update --allow-unauthenticated
+        exec_container_root apt-get update
     fi
 }
 
 get_source_package () {
     echo "${POSITIVE_COLOR}Downloading source package $PACKAGE for Ubuntu $TARGET_UBUNTU.${NC}"
 
-    # cleanup source repository potentially setup by install_dependencies before
+    # cleanup source repository potentially setup by copy_build_to_container before
     exec_container rm -f $USERDIR/dependencies_installed
-    exec_container_root add-apt-repository --remove --enable-source \"deb file://$SOURCE_REPOSITORY/ /\"
-    exec_container_root "sudo rm -f /etc/apt/preferences.d/localrepo.pref"
+    exec_container_root "rm -f /etc/apt/sources.list.d/localrepo.list /etc/apt/preferences.d/localrepo.pref"
 
     enable_overlay_source
 
@@ -470,7 +469,7 @@ ensure_upstream_tarball () {
         echo "${POSITIVE_COLOR}Downloading upstream tarball of $PACKAGE in container.${NC}"
         enable_overlay_source
         # FIXME: try using dget instead so that we can specify a precise version
-        exec_container "cd $USERDIR && apt-get source --download-only --allow-unauthenticated $PACKAGE"
+        exec_container "cd $USERDIR && apt-get source --download-only $PACKAGE"
     fi
 }
 
@@ -482,7 +481,7 @@ install_dependencies () {
         echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
         cp debian/control "${TMP_DIR}/"
         workaround_multi_arch_deps ${TMP_DIR}/control
-        exec_container_root apt-get update --allow-unauthenticated
+        exec_container_root apt-get update
         # TODO: add build profiles to mk-build-deps once wishlist bug
         # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=894732 is fixed and
         # propagated to Ubuntu version we will use in the future.
@@ -576,6 +575,12 @@ copy_build_to_container () {
     exec_container mkdir -p $SOURCE_REPOSITORY
     lxc file push $PREVIOUS_BUILD_FOLDER/$PREVIOUS_DEBS_TARBALL $LXD_CONTAINER$SOURCE_REPOSITORY/
     exec_container "tar xf $SOURCE_REPOSITORY/$PREVIOUS_DEBS_TARBALL --directory $SOURCE_REPOSITORY/"
+
+    lxc file push $SCRIPT_DIR/$CREATE_REPO_SCRIPT $LXD_CONTAINER$SOURCE_REPOSITORY/
+    exec_container $SOURCE_REPOSITORY/$CREATE_REPO_SCRIPT $SOURCE_REPOSITORY
+
+    exec_container_root "echo 'deb [trusted=yes] file://$SOURCE_REPOSITORY/ /' >/etc/apt/sources.list.d/localrepo.list"
+    exec_container_root "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000' >/etc/apt/preferences.d/localrepo.pref"
 }
 
 clean () {
