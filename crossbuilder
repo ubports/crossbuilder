@@ -340,20 +340,20 @@ ensure_container () {
     # setup the building container
     if lxc info $LXD_CONTAINER > /dev/null 2>&1 ; then
         echo "${POSITIVE_COLOR}LXD container $LXD_CONTAINER already exists.${NC}"
+        config_container_dir_mount
         start_container
     else
         echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         create_container
+        config_container_dir_mount
     fi
-
-    config_container_dir_mount
 }
 
 start_container_if_exists () {
     if lxc info $LXD_CONTAINER > /dev/null 2>&1 ; then
         echo "${POSITIVE_COLOR}Starting LXD container $LXD_CONTAINER.${NC}"
-        start_container
         config_container_dir_mount
+        start_container
     else
         echo "${ERROR_COLOR}LXD container $LXD_CONTAINER doesn't exist.${NC}"
         exit 1
