@@ -327,14 +327,7 @@ create_container () {
     exec_container_root adduser $USERNAME sudo
     # set empty password for the user
     exec_container_root passwd --delete $USERNAME
-    # FIXME: these should probably be set in the image already
-    if [ "$HOST_FARCH" != "$TARGET_FARCH" ]; then
-        QT_SELECT_ARCH="$HOST_FARCH-$TARGET_FARCH"
-    else
-        QT_SELECT_ARCH=$HOST_FARCH
-    fi
     exec_container_root "printf 'export PKG_CONFIG_PATH=/usr/lib/$TARGET_FARCH/pkgconfig\n\
-export QT_SELECT=qt5-$QT_SELECT_ARCH\n\
 export CROSS_COMPILE=$TARGET_FARCH-\n\
 export CC=$TARGET_FARCH-gcc\n\
 export CXX=$TARGET_FARCH-g++\n\
@@ -508,6 +501,7 @@ install_dependencies () {
             exec_container_root mkdir -p /usr/lib/$HOST_FARCH/qtchooser
             exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/qt5-$TARGET_FARCH.conf
             exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/5-$TARGET_FARCH.conf
+            exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/qt5.conf
             exec_container_root mkdir -p /usr/lib/$HOST_FARCH/qt5/$TARGET_FARCH/bin
             exec_container_root ln -f /usr/bin/qt5-qmake-$TARGET_FARCH /usr/lib/$HOST_FARCH/qt5/$TARGET_FARCH/bin/qmake
         fi
