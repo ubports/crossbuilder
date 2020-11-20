@@ -296,6 +296,55 @@ start_container () {
     fi
 }
 
+nonsdk_container_setup () {
+    case "$TARGET_UBUNTU" in
+        16.04) ubports_repo_line="deb http://repo.ubports.com/ xenial main" ;;
+        18.04) ubports_repo_line="deb http://repo2.ubports.com/ bionic main" ;;
+        20.04) ubports_repo_line="deb http://repo2.ubports.com/ focal main" ;;
+    esac
+    if [ -n "$ubports_repo_line" ]; then
+        exec_container_root "echo '$ubports_repo_line' >/etc/apt/sources.list.d/ubports.list"
+    fi
+
+    # Skip multiarch setup if not crossbuilding
+    if [ "$HOST_ARCH" = "$TARGET_ARCH" ]; then
+        return
+    fi
+
+    exec_container_root "dpkg --add-architecture $TARGET_ARCH"
+
+    # i386 and amd64 archive is on http://archive.ubuntu.com/ubuntu/, while
+    # other architectures' are on http://ports.ubuntu.com/ubuntu-ports/. Some
+    # special handling for APT sources is needed.
+    case "${HOST_ARCH}-${TARGET_ARCH}" in
+        i386-amd64|amd64-i386)
+            # Both on archive, do nothing.
+            ;;
+        i386-*|amd64-*)
+            # Host is on archive, target is on ports.
+            exec_container_root "sed -E \
+                -e 's:(archive|security)\.ubuntu\.com/ubuntu/:ports.ubuntu.com/ubuntu-ports/:' \
+                -e 's:^deb :deb [arch=${TARGET_ARCH}] :' \
+                /etc/apt/sources.list >/etc/apt/sources.list.d/ports.list"
+            exec_container_root "sed -i -E \
+                -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
+                /etc/apt/sources.list"
+        ;;
+        *-i386|*-amd64)
+            # Host is on ports, target is on archive.
+            exec_container_root "sed -E \
+                -e 's:ports\.ubuntu\.com/ubuntu-ports/ ([a-z]+)-security :security.ubuntu.com/ubuntu/ \1-security :' \
+                -e 's:ports\.ubuntu\.com/ubuntu-ports/ ([a-z-]+):archive.ubuntu.com/ubuntu/ \1 :' \
+                -e 's:^deb :deb [arch=${TARGET_ARCH}] :' \
+                /etc/apt/sources.list >/etc/apt/sources.list.d/non-ports.list"
+            exec_container_root "sed -i -E \
+                -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
+                /etc/apt/sources.list"
+        ;;
+        # Not matched: both on ports, do nothing.
+    esac
+}
+
 create_container () {
     lxc remote --protocol=simplestreams --public=true --accept-certificate=true add ubports-sdk https://sdk-images.ubports.com || true
     lxc init $LXD_IMAGE $LXD_CONTAINER $EPHEMERAL_FLAG
@@ -324,6 +373,9 @@ create_container () {
         exec_container_root "add-apt-repository 'deb http://repo.ubports.com vivid main' >> /etc/apt/sources.list"
     fi
     wget -qO - "https://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
+    if ! echo "$LXD_IMAGE" | grep -q "ubuntu-sdk"; then
+        nonsdk_container_setup
+    fi
     exec_container_root apt update
     exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static
     exec_container_root adduser $USERNAME sudo
