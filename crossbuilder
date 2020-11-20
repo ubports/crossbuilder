@@ -114,6 +114,10 @@ variables () {
     LXD_CONTAINER_COMPAT=builder-$PACKAGE-$LXD_IMAGE_NO_PREFIX
     LXD_CONTAINER=$PACKAGE-$LXD_IMAGE_NO_SDK
     LXD_CONTAINER=$(echo $LXD_CONTAINER | sed "s/\./-/")
+    if ! echo "$LXD_CONTAINER" | grep -q "${HOST_ARCH}-${TARGET_ARCH}"; then
+        # Using non-sdk image, needs to append arch ourselve
+        LXD_CONTAINER="${LXD_CONTAINER}-${HOST_ARCH}-${TARGET_ARCH}"
+    fi
     if lxc info $LXD_CONTAINER_COMPAT > /dev/null 2>&1 ; then
         echo "${ERROR_COLOR}Containers are switching to shorter names, please manually delete your container: lxc delete -f $LXD_CONTAINER_COMPAT${NC}"
         echo "${ERROR_COLOR}Next time it will be called $LXD_CONTAINER.${NC}"
