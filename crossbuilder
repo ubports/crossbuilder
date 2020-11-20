@@ -323,7 +323,7 @@ create_container () {
         exec_container_root "add-apt-repository -y ppa:ubports-developers/overlay"
         exec_container_root "add-apt-repository 'deb http://repo.ubports.com vivid main' >> /etc/apt/sources.list"
     fi
-    wget -qO - "http://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
+    wget -qO - "https://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
     exec_container_root apt update
     exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static
     exec_container_root adduser $USERNAME sudo
