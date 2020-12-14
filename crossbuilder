@@ -507,14 +507,27 @@ apply_build_profiles_to_debian_control () {
     done
 }
 
+# Accepts file paths. Print the first file that exists, or nothing if none exists.
+first_existing_file () {
+  while [ -n "$1" ]; do
+    if [ -e "$1" ]; then
+      echo "$1"
+      return
+    fi
+
+    shift
+  done
+}
+
 ensure_upstream_tarball () {
-    if [ -f ubports.source_location ]; then
+    source_location_file=$(first_existing_file debian/ubports.source_location ubports.source_location)
+    if [ -n "$source_location_file" ]; then
         while read -r SOURCE_URL && read -r TARGET_FILE; do
             echo "${POSITIVE_COLOR}Downloading upstream source tarball of $PACKAGE in container to $TARGET_FILE.${NC}"
             # /dev/null redirection is required. Otherwise, `lxc exec` will closes stdin (i.e. the file).
             # https://github.com/lxc/lxd/issues/2200
             exec_container "cd $USERDIR && wget --continue -O $TARGET_FILE $SOURCE_URL" </dev/null
-        done <ubports.source_location
+        done <"$source_location_file"
     elif grep quilt debian/source/format > /dev/null 2>&1 ; then
         echo "${POSITIVE_COLOR}Downloading upstream tarball of $PACKAGE in container.${NC}"
         enable_overlay_source
