@@ -297,10 +297,11 @@ start_container () {
 }
 
 nonsdk_container_setup () {
-    case "$TARGET_UBUNTU" in
-        16.04) ubports_repo_line="deb http://repo.ubports.com/ xenial main" ;;
-        18.04) ubports_repo_line="deb http://repo2.ubports.com/ bionic main" ;;
-        20.04) ubports_repo_line="deb http://repo2.ubports.com/ focal main" ;;
+    container_ubuntu_version=$(exec_container_root "lsb_release -cs")
+
+    case "$container_ubuntu_version" in
+        xenial|bionic) ubports_repo_line="deb http://repo.ubports.com/ $container_ubuntu_version main" ;;
+        focal) ubports_repo_line="deb http://repo2.ubports.com/ $container_ubuntu_version main" ;;
     esac
     if [ -n "$ubports_repo_line" ]; then
         exec_container_root "echo '$ubports_repo_line' >/etc/apt/sources.list.d/ubports.list"
