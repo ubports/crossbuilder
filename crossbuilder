@@ -373,7 +373,7 @@ create_container () {
         exec_container_root "add-apt-repository -y ppa:ubports-developers/overlay"
         exec_container_root "add-apt-repository 'deb http://repo.ubports.com vivid main' >> /etc/apt/sources.list"
     fi
-    wget -qO - "https://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
+    wget -qO - "https://repo.ubports.com/keyring.gpg" | exec_container_root 'cat >/etc/apt/trusted.gpg.d/ubports-keyring.gpg'
     if ! echo "$LXD_IMAGE" | grep -q "ubuntu-sdk"; then
         nonsdk_container_setup
     fi
