@@ -297,7 +297,9 @@ start_container () {
 }
 
 nonsdk_container_setup () {
-    container_ubuntu_version=$(exec_container_root "lsb_release -cs")
+    # We want the variable to be expanded inside the container.
+    # shellcheck disable=SC2016
+    container_ubuntu_version=$(exec_container_root '. /etc/os-release && echo $VERSION_CODENAME')
 
     case "$container_ubuntu_version" in
         xenial|bionic) ubports_repo_line="deb http://repo.ubports.com/ $container_ubuntu_version main" ;;
