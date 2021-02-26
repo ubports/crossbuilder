@@ -145,7 +145,7 @@ variables () {
     SOURCE_PATH_LOCAL=$MOUNTED_DIRECTORY
     SOURCE_PATH_CONTAINER=$MOUNT_POINT
     POST_DEPLOY_SCRIPT=.crossbuilder/post_deploy
-    HOST_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_MULTIARCH)
+    HOST_FARCH=$(dpkg-architecture -f -a$HOST_ARCH -qDEB_BUILD_MULTIARCH)
     TARGET_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
     if [ "$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_ARCH)" != "$TARGET_ARCH" ]; then
         DEB_BUILD_PROFILES="cross nocheck nodoc"
@@ -561,17 +561,19 @@ install_dependencies () {
                 $USERDIR/patched_debian_control"
         rm ${TMP_DIR}/control
 
-        # workaround various issues with qmake cross compilation
-        # FIXME: this should be integrated in the binary package qt5-qmake-$TARGET_FARCH
-        # from source package qtbase-opensource-src
-        if exec_container test -e /usr/bin/qt5-qmake-$TARGET_FARCH ; then
-            exec_container_root "printf '/usr/lib/$HOST_FARCH/qt5/$TARGET_FARCH/bin\n/usr/lib/$HOST_FARCH/qt5/bin\n/usr/lib/$HOST_FARCH\n' > /usr/share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf"
-            exec_container_root mkdir -p /usr/lib/$HOST_FARCH/qtchooser
-            exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/qt5-$TARGET_FARCH.conf
-            exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/5-$TARGET_FARCH.conf
+        QMAKE=$(exec_container "find /usr -executable -type f -path '*/bin/*' -name '*qmake*' | grep $TARGET_FARCH" | head -1)
+        if [ -n "$QMAKE" ]; then
+            echo "${POSITIVE_COLOR}Setting $QMAKE as the default qmake binary.${NC}"
+            exec_container_root "ln -s $QMAKE /usr/local/bin/qmake"
+            exec_container_root "printf '/usr/local/bin\n/usr/lib/$TARGET_FARCH\n' > /usr/share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf"
             exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/qt5.conf
-            exec_container_root mkdir -p /usr/lib/$HOST_FARCH/qt5/$TARGET_FARCH/bin
-            exec_container_root ln -f /usr/bin/qt5-qmake-$TARGET_FARCH /usr/lib/$HOST_FARCH/qt5/$TARGET_FARCH/bin/qmake
+            # Fix moc and other missing tools for cmake
+            for TOOL in moc qdbusxml2cpp
+            do
+                exec_container_root ln -f -s ../../../qt5/bin/$TOOL /usr/lib/$HOST_FARCH/qt5/bin/
+            done
+        else
+            echo "Note: qmake not found"
         fi
 
         exec_container touch $USERDIR/dependencies_installed
