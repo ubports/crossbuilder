@@ -297,7 +297,9 @@ start_container () {
 }
 
 nonsdk_container_setup () {
-    container_ubuntu_version=$(exec_container_root "lsb_release -cs")
+    # We want the variable to be expanded inside the container.
+    # shellcheck disable=SC2016
+    container_ubuntu_version=$(exec_container_root '. /etc/os-release && echo $VERSION_CODENAME')
 
     case "$container_ubuntu_version" in
         xenial|bionic) ubports_repo_line="deb http://repo.ubports.com/ $container_ubuntu_version main" ;;
@@ -373,7 +375,7 @@ create_container () {
         exec_container_root "add-apt-repository -y ppa:ubports-developers/overlay"
         exec_container_root "add-apt-repository 'deb http://repo.ubports.com vivid main' >> /etc/apt/sources.list"
     fi
-    wget -qO - "https://repo.ubports.com/keyring.gpg" | exec_container_root apt-key add -
+    wget -qO - "https://repo.ubports.com/keyring.gpg" | exec_container_root 'cat >/etc/apt/trusted.gpg.d/ubports-keyring.gpg'
     if ! echo "$LXD_IMAGE" | grep -q "ubuntu-sdk"; then
         nonsdk_container_setup
     fi
@@ -606,7 +608,7 @@ build_deb () {
     backup_changelog
     trap restore_changelog HUP INT TERM QUIT
 
-    exec_container dch -v $NEW_PACKAGE_VERSION \'\'
+    exec_container DEBEMAIL='crossbuilder@ubports.com' dch -v $NEW_PACKAGE_VERSION \'\'
     if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $EXTRA_DEB_BUILD_OPTIONS' dpkg-buildpackage --target-arch $TARGET_ARCH -d -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b" ; then
         restore_changelog
         exit 1
