@@ -608,7 +608,7 @@ build_deb () {
     backup_changelog
     trap restore_changelog HUP INT TERM QUIT
 
-    exec_container dch -v $NEW_PACKAGE_VERSION \'\'
+    exec_container DEBEMAIL='crossbuilder@ubports.com' dch -v $NEW_PACKAGE_VERSION \'\'
     if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $DEB_BUILD_OPTIONS $EXTRA_DEB_BUILD_OPTIONS' dpkg-buildpackage --target-arch $TARGET_ARCH -d -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b" ; then
         restore_changelog
         exit 1
