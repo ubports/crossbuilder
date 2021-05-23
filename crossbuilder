@@ -607,7 +607,7 @@ build_deb () {
     trap restore_changelog HUP INT TERM QUIT
 
     exec_container dch -v $NEW_PACKAGE_VERSION \'\'
-    if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $EXTRA_DEB_BUILD_OPTIONS' dpkg-buildpackage --target-arch $TARGET_ARCH -d -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b" ; then
+    if ! exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $DEB_BUILD_OPTIONS $EXTRA_DEB_BUILD_OPTIONS' dpkg-buildpackage --target-arch $TARGET_ARCH -d -us -uc -nc -I -Iobj-* -Idebian/tmp/* -I.bzr* -b" ; then
         restore_changelog
         exit 1
     fi
@@ -623,7 +623,7 @@ build_deb () {
 build_make_install () {
     echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
     exec_container "rm -f debian/*.debhelper.log"
-    exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $EXTRA_DEB_BUILD_OPTIONS' fakeroot debian/rules install"
+    exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $DEB_BUILD_OPTIONS $EXTRA_DEB_BUILD_OPTIONS' fakeroot debian/rules install"
 }
 
 build () {
