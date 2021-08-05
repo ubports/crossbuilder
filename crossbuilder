@@ -119,8 +119,8 @@ variables () {
         LXD_CONTAINER="${LXD_CONTAINER}-${HOST_ARCH}-${TARGET_ARCH}"
     fi
     if lxc info $LXD_CONTAINER_COMPAT > /dev/null 2>&1 ; then
-        echo "${ERROR_COLOR}Containers are switching to shorter names, please manually delete your container: lxc delete -f $LXD_CONTAINER_COMPAT${NC}"
-        echo "${ERROR_COLOR}Next time it will be called $LXD_CONTAINER.${NC}"
+        echo -e "${ERROR_COLOR}Containers are switching to shorter names, please manually delete your container: lxc delete -f $LXD_CONTAINER_COMPAT${NC}"
+        echo -e "${ERROR_COLOR}Next time it will be called $LXD_CONTAINER.${NC}"
         LXD_CONTAINER=$LXD_CONTAINER_COMPAT
     fi
 
@@ -168,9 +168,9 @@ check_lxd_accessible () {
     fi
 
     if ! lxc info > /dev/null 2>&1 ; then
-        echo "${ERROR_COLOR}LXD was installed but is not accessible."
+        echo -e "${ERROR_COLOR}LXD was installed but is not accessible."
         echo "Check the 'lxd' group exists and you are a member, then restart your computer."
-        echo "For more information, run 'lxc info'.${NC}"
+        echo -e "For more information, run 'lxc info'.${NC}"
         exit 1
     fi
 }
@@ -197,8 +197,8 @@ is_subuid_setup () {
 
 ensure_lxd_subuid () {
     if test -z "$FORCE_PRIVILEGED" && ! is_subuid_setup ; then
-        echo "${ERROR_COLOR}LXD requires subuid to be setup adequately to mount directories in containers.${NC}"
-        echo "${POSITIVE_COLOR}Would you like to do that now? (y/n) ${NC}"
+        echo -e "${ERROR_COLOR}LXD requires subuid to be setup adequately to mount directories in containers.${NC}"
+        echo -e "${POSITIVE_COLOR}Would you like to do that now? (y/n) ${NC}"
         read REPLY
         echo
         if [ "$REPLY" = y ]
@@ -213,17 +213,17 @@ ensure_lxd_subuid () {
                 sudo systemctl restart lxd
             fi
         else
-            echo "${ERROR_COLOR}Unable to set up LXD for use in crossbuilder. Subuid setup refused.${NC}"
+            echo -e "${ERROR_COLOR}Unable to set up LXD for use in crossbuilder. Subuid setup refused.${NC}"
             exit 1
         fi
     fi
 }
 
 setup_lxd () {
-    echo "${POSITIVE_COLOR}Setting up LXD.${NC}"
+    echo -e "${POSITIVE_COLOR}Setting up LXD.${NC}"
 
     if [ "$(lsb_release -cs)" = "xenial" ]; then
-        echo "${ERROR_COLOR}You are running Ubuntu 16.04 (xenial).${NC}"
+        echo -e "${ERROR_COLOR}You are running Ubuntu 16.04 (xenial).${NC}"
         echo "We have found an issue where the default LXD setup on 16.04 does not allow"
         echo "containers to connect to the internet."
         echo "In the following dialog, set up an IPv4 and IPv6 subnet for your bridge so they"
@@ -237,11 +237,11 @@ setup_lxd () {
     fi
 
     if [ -n "$ENCRYPTED_HOME" ] ; then
-        echo -n "${ERROR_COLOR}Your home folder is encrypted. $PROGRAM_NAME will use priviledged "
-        echo -n "LXD containers and the default storage backend (slower).\n${NC}"
+        echo -e -n "${ERROR_COLOR}Your home folder is encrypted. $PROGRAM_NAME will use priviledged "
+        echo -e -n "LXD containers and the default storage backend (slower).\n${NC}"
         sudo lxd init --auto
     else
-        echo -n "${POSITIVE_COLOR}Would you like to setup LXD with ZFS in your home directory? (y/n) \n${NC}"
+        echo -e -n "${POSITIVE_COLOR}Would you like to setup LXD with ZFS in your home directory? (y/n) \n${NC}"
         echo -n "This is recommended for faster operation, and also in case there is not enough "
         echo -n "space in your / partition. \n"
         read REPLY
@@ -249,11 +249,11 @@ setup_lxd () {
         if [ "$REPLY" = y ]
         then
             if ! which zpool > /dev/null ; then
-                echo "${POSITIVE_COLOR}Installing ZFS.${NC}"
+                echo -e "${POSITIVE_COLOR}Installing ZFS.${NC}"
                 sudo apt-get install -y zfsutils-linux
             fi
             LXD_POOL=~/zfs/lxd.img
-            echo "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
+            echo -e "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
             mkdir -p `dirname $LXD_POOL`
             truncate -s 32G $LXD_POOL
             sudo zpool create -f lxd $LXD_POOL
@@ -268,7 +268,7 @@ setup_lxd () {
 
 config_container_dir_mount () {
     if ! lxc config device get $LXD_CONTAINER current_dir_mount disk 2> /dev/null ; then
-        echo "${POSITIVE_COLOR}Mounting $MOUNTED_DIRECTORY in container.${NC}"
+        echo -e "${POSITIVE_COLOR}Mounting $MOUNTED_DIRECTORY in container.${NC}"
         lxc config device add $LXD_CONTAINER current_dir_mount disk source=$MOUNTED_DIRECTORY path=$MOUNT_POINT
     else
         lxc config device set $LXD_CONTAINER current_dir_mount source $MOUNTED_DIRECTORY
@@ -394,11 +394,11 @@ export CXX=$TARGET_FARCH-g++\n\
 ensure_container () {
     # setup the building container
     if lxc info $LXD_CONTAINER > /dev/null 2>&1 ; then
-        echo "${POSITIVE_COLOR}LXD container $LXD_CONTAINER already exists.${NC}"
+        echo -e "${POSITIVE_COLOR}LXD container $LXD_CONTAINER already exists.${NC}"
         config_container_dir_mount
         start_container
     else
-        echo "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
+        echo -e "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         create_container
         config_container_dir_mount
     fi
@@ -406,27 +406,27 @@ ensure_container () {
 
 start_container_if_exists () {
     if lxc info $LXD_CONTAINER > /dev/null 2>&1 ; then
-        echo "${POSITIVE_COLOR}Starting LXD container $LXD_CONTAINER.${NC}"
+        echo -e "${POSITIVE_COLOR}Starting LXD container $LXD_CONTAINER.${NC}"
         config_container_dir_mount
         start_container
     else
-        echo "${ERROR_COLOR}LXD container $LXD_CONTAINER doesn't exist.${NC}"
+        echo -e "${ERROR_COLOR}LXD container $LXD_CONTAINER doesn't exist.${NC}"
         exit 1
     fi
 }
 
 delete_container () {
-    echo "${POSITIVE_COLOR}Deleting LXD container $LXD_CONTAINER.${NC}"
+    echo -e "${POSITIVE_COLOR}Deleting LXD container $LXD_CONTAINER.${NC}"
     lxc delete -f $LXD_CONTAINER
 }
 
 shell_container () {
-    echo "${POSITIVE_COLOR}Entering shell in LXD container $LXD_CONTAINER.${NC}"
+    echo -e "${POSITIVE_COLOR}Entering shell in LXD container $LXD_CONTAINER.${NC}"
     lxc exec $LXD_CONTAINER -- su --login $USERNAME
 }
 
 stop_container () {
-    echo "${POSITIVE_COLOR}Stopping LXD container $LXD_CONTAINER.${NC}"
+    echo -e "${POSITIVE_COLOR}Stopping LXD container $LXD_CONTAINER.${NC}"
     lxc stop -f $LXD_CONTAINER
 }
 
@@ -439,7 +439,7 @@ enable_overlay_source () {
 }
 
 get_source_package () {
-    echo "${POSITIVE_COLOR}Downloading source package $PACKAGE for Ubuntu $TARGET_UBUNTU.${NC}"
+    echo -e "${POSITIVE_COLOR}Downloading source package $PACKAGE for Ubuntu $TARGET_UBUNTU.${NC}"
 
     # cleanup source repository potentially setup by copy_build_to_container before
     exec_container rm -f $USERDIR/dependencies_installed
@@ -448,8 +448,8 @@ get_source_package () {
     enable_overlay_source
 
     if ! lxc exec $LXD_CONTAINER -- su -l -c "cd $MOUNT_POINT; apt-get source --only-source $PACKAGE" $USERNAME ; then
-        echo "${ERROR_COLOR}No source package exists with the name $PACKAGE.${NC}"
-        echo "${ERROR_COLOR}Deleting container $LXD_CONTAINER.${NC}"
+        echo -e "${ERROR_COLOR}No source package exists with the name $PACKAGE.${NC}"
+        echo -e "${ERROR_COLOR}Deleting container $LXD_CONTAINER.${NC}"
         lxc delete -f $LXD_CONTAINER
         exit 1
     fi
@@ -459,10 +459,10 @@ get_source_package () {
     mv $PACKAGE-*/* .
     mv $PACKAGE-*/.[!.]* . || true
     rmdir $PACKAGE-*
-    echo "${POSITIVE_COLOR}Source code for $PACKAGE is now available in $PACKAGE/.${NC}"
+    echo -e "${POSITIVE_COLOR}Source code for $PACKAGE is now available in $PACKAGE/.${NC}"
     VCS=$(grep -i vcs debian/control | grep --invert-match Vcs-Browser)
     if [ "$VCS" != "" ] ; then
-        echo "${POSITIVE_COLOR}'$PACKAGE' packaging is versioned and available at $VCS${NC}"
+        echo -e "${POSITIVE_COLOR}'$PACKAGE' packaging is versioned and available at $VCS${NC}"
     fi
 }
 
@@ -524,13 +524,13 @@ ensure_upstream_tarball () {
     source_location_file=$(first_existing_file debian/ubports.source_location ubports.source_location)
     if [ -n "$source_location_file" ]; then
         while read -r SOURCE_URL && read -r TARGET_FILE; do
-            echo "${POSITIVE_COLOR}Downloading upstream source tarball of $PACKAGE in container to $TARGET_FILE.${NC}"
+            echo -e "${POSITIVE_COLOR}Downloading upstream source tarball of $PACKAGE in container to $TARGET_FILE.${NC}"
             # /dev/null redirection is required. Otherwise, `lxc exec` will closes stdin (i.e. the file).
             # https://github.com/lxc/lxd/issues/2200
             exec_container "cd $USERDIR && wget --continue -O $TARGET_FILE $SOURCE_URL" </dev/null
         done <"$source_location_file"
     elif grep quilt debian/source/format > /dev/null 2>&1 ; then
-        echo "${POSITIVE_COLOR}Downloading upstream tarball of $PACKAGE in container.${NC}"
+        echo -e "${POSITIVE_COLOR}Downloading upstream tarball of $PACKAGE in container.${NC}"
         enable_overlay_source
         # FIXME: try using dget instead so that we can specify a precise version
         exec_container "cd $USERDIR && apt-get source --download-only $PACKAGE"
@@ -538,11 +538,11 @@ ensure_upstream_tarball () {
 }
 
 install_dependencies () {
-    echo "${POSITIVE_COLOR}Installing $TARGET_ARCH (host $HOST_ARCH) build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
+    echo -e "${POSITIVE_COLOR}Installing $TARGET_ARCH (host $HOST_ARCH) build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
     # install build dependencies in container
     if ! exec_container test -e $USERDIR/dependencies_installed ; then
         ensure_upstream_tarball
-        echo "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
+        echo -e "${POSITIVE_COLOR}Installing $TARGET_ARCH build dependencies for $PACKAGE in container $LXD_CONTAINER.${NC}"
         cp debian/control "${TMP_DIR}/"
         workaround_multi_arch_deps ${TMP_DIR}/control
         exec_container_root apt-get update
@@ -563,7 +563,7 @@ install_dependencies () {
 
         QMAKE=$(exec_container "find /usr -executable -type f -path '*/bin/*' -name '*qmake*' | grep $TARGET_FARCH" | head -1)
         if [ -n "$QMAKE" ]; then
-            echo "${POSITIVE_COLOR}Setting $QMAKE as the default qmake binary.${NC}"
+            echo -e "${POSITIVE_COLOR}Setting $QMAKE as the default qmake binary.${NC}"
             exec_container_root "ln -s $QMAKE /usr/local/bin/qmake"
             exec_container_root "printf '/usr/local/bin\n/usr/lib/$TARGET_FARCH\n' > /usr/share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf"
             exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/qt5.conf
@@ -578,7 +578,7 @@ install_dependencies () {
 
         exec_container touch $USERDIR/dependencies_installed
     else
-        echo "${POSITIVE_COLOR}$TARGET_ARCH build dependencies for $PACKAGE already installed in container $LXD_CONTAINER.${NC}"
+        echo -e "${POSITIVE_COLOR}$TARGET_ARCH build dependencies for $PACKAGE already installed in container $LXD_CONTAINER.${NC}"
     fi;
 }
 
@@ -598,7 +598,7 @@ install_foreign () {
 
 build_deb () {
     # build package in container
-    echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
+    echo -e "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
     exec_container "rm -f ../*.deb ../*.changes ../$DEBS_TARBALL"
     exec_container "rm -f ../*.ddeb"
     exec_container "rm -f debian/*.debhelper.log"
@@ -614,14 +614,14 @@ build_deb () {
     restore_changelog
 
     # transfer resulting debian packages to local machine
-    echo "${POSITIVE_COLOR}Packing build artifacts in $DEBS_TARBALL.${NC}"
+    echo -e "${POSITIVE_COLOR}Packing build artifacts in $DEBS_TARBALL.${NC}"
     rm -f $DEBS_TARBALL_ROOT*
     exec_container "tar cf ../$DEBS_TARBALL ../*.deb"
     lxc file pull $LXD_CONTAINER$USERDIR/$DEBS_TARBALL .
 }
 
 build_make_install () {
-    echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
+    echo -e "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH in parallel (-j$PARALLEL_BUILD).${NC}"
     exec_container "rm -f debian/*.debhelper.log"
     exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' DEB_BUILD_OPTIONS='parallel=$PARALLEL_BUILD nostrip $DEB_BUILD_OPTIONS $EXTRA_DEB_BUILD_OPTIONS' fakeroot debian/rules install"
 }
@@ -637,7 +637,7 @@ build () {
 copy_build_to_container () {
     PREVIOUS_BUILD_FOLDER=$1
     PREVIOUS_DEBS_TARBALL=$2
-    echo "${POSITIVE_COLOR}Copying and extracting $PREVIOUS_DEBS_TARBALL from $PREVIOUS_BUILD_FOLDER into container $LXD_CONTAINER.${NC}"
+    echo -e "${POSITIVE_COLOR}Copying and extracting $PREVIOUS_DEBS_TARBALL from $PREVIOUS_BUILD_FOLDER into container $LXD_CONTAINER.${NC}"
     exec_container mkdir -p $SOURCE_REPOSITORY
     lxc file push $PREVIOUS_BUILD_FOLDER/$PREVIOUS_DEBS_TARBALL $LXD_CONTAINER$SOURCE_REPOSITORY/
     exec_container "tar xf $SOURCE_REPOSITORY/$PREVIOUS_DEBS_TARBALL --directory $SOURCE_REPOSITORY/"
@@ -650,7 +650,7 @@ copy_build_to_container () {
 }
 
 clean () {
-    echo "${POSITIVE_COLOR}Cleaning previous build of $PACKAGE for $TARGET_ARCH.${NC}"
+    echo -e "${POSITIVE_COLOR}Cleaning previous build of $PACKAGE for $TARGET_ARCH.${NC}"
     exec_container "DEB_BUILD_PROFILES='$DEB_BUILD_PROFILES' debian/rules clean"
 }
 
@@ -665,7 +665,7 @@ check_for_container_network() {
         sleep 1
     done
     if [ $NETWORK_UP -ne 1 ] ; then
-        echo "${ERROR_COLOR}Container is not connected to the Internet.${NC}"
+        echo -e "${ERROR_COLOR}Container is not connected to the Internet.${NC}"
         exit 1
     fi
 
@@ -681,18 +681,18 @@ check_for_device_network() {
         fi
     done
     if [ $NETWORK_UP -ne 1 ] ; then
-        echo "${ERROR_COLOR}The connected device is not connected to the Internet.${NC}"
+        echo -e "${ERROR_COLOR}The connected device is not connected to the Internet.${NC}"
         exit 1
     fi
 }
 
 deploy_deb () {
     if ! test -e $DEBS_TARBALL ; then
-        echo "${ERROR_COLOR}No Debian packages ($DEBS_TARBALL) to deploy to device. Run $PROGRAM_NAME build first.${NC}"
+        echo -e "${ERROR_COLOR}No Debian packages ($DEBS_TARBALL) to deploy to device. Run $PROGRAM_NAME build first.${NC}"
         exit 1
     fi
 
-    echo "${POSITIVE_COLOR}Transferring Debian packages to device.${NC}"
+    echo -e "${POSITIVE_COLOR}Transferring Debian packages to device.${NC}"
     # tranfer debian packages to device
     exec_device mkdir -p /tmp/repo
     adb push $DEBS_TARBALL /tmp/repo/
@@ -700,7 +700,7 @@ deploy_deb () {
 
     # install debian packages on device
     if [ ! -z "$PACKAGES_TO_DEPLOY" ] ; then
-        echo "${POSITIVE_COLOR}Installing manually specified packages:" $PACKAGES_TO_DEPLOY${NC}
+        echo -e "${POSITIVE_COLOR}Installing manually specified packages:" $PACKAGES_TO_DEPLOY${NC}
         DPKG_ARGS=""
         for package in $PACKAGES_TO_DEPLOY ; do
             DPKG_ARGS="$DPKG_ARGS /tmp/repo/$package"_"$NEW_PACKAGE_VERSION"_"$TARGET_ARCH.deb"
@@ -708,7 +708,7 @@ deploy_deb () {
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i $DPKG_ARGS
     else
         check_for_device_network
-        echo "${POSITIVE_COLOR}Upgrading packages already installed on device with newly built ones.${NC}"
+        echo -e "${POSITIVE_COLOR}Upgrading packages already installed on device with newly built ones.${NC}"
         # create local deb repository on device
         rm -f $CREATE_REPO_SCRIPT
         if ! adb pull /tmp/repo/$CREATE_REPO_SCRIPT 2> /dev/null ; then
@@ -732,7 +732,7 @@ deploy_deb () {
 }
 
 deploy_make_install () {
-    echo "${POSITIVE_COLOR}Transferring build artifacts to device.${NC}"
+    echo -e "${POSITIVE_COLOR}Transferring build artifacts to device.${NC}"
     if [ -z "$PACKAGES_TO_DEPLOY" ] ; then
         PACKAGES_TO_DEPLOY=$(grep Package debian/control | cut -d ' ' -f 2)
     fi
@@ -754,7 +754,7 @@ deploy_make_install () {
 deploy_to_device () {
     DEVICE_STATE=`adb get-state`
     if [ "$DEVICE_STATE" != "device" ] ; then
-        echo "${ERROR_COLOR}No device connected to deploy to.${NC}"
+        echo -e "${ERROR_COLOR}No device connected to deploy to.${NC}"
         exit 1
     fi;
 
@@ -768,7 +768,7 @@ deploy_to_device () {
         rm -f password_ok
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A rm -f /tmp/password_ok
     else
-        echo "${ERROR_COLOR}Device password incorrect. Use --password to pass the correct one or write it in $DEVICE_PASSWORD_FILE.${NC}"
+        echo -e "${ERROR_COLOR}Device password incorrect. Use --password to pass the correct one or write it in $DEVICE_PASSWORD_FILE.${NC}"
         exit 1
     fi
 
@@ -782,11 +782,11 @@ deploy_to_device () {
 
     # execute post deploy
     if test -e $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT ; then
-        echo "${POSITIVE_COLOR}Execute project specific post deploy script ($POST_DEPLOY_SCRIPT).${NC}"
+        echo -e "${POSITIVE_COLOR}Execute project specific post deploy script ($POST_DEPLOY_SCRIPT).${NC}"
         adb push $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT /tmp
         exec_device sh /tmp/$(basename $POST_DEPLOY_SCRIPT)
     else
-        echo "${POSITIVE_COLOR}If a script named $POST_DEPLOY_SCRIPT existed, it would be executed on device after every deploy.${NC}"
+        echo -e "${POSITIVE_COLOR}If a script named $POST_DEPLOY_SCRIPT existed, it would be executed on device after every deploy.${NC}"
     fi
 }
 
@@ -802,7 +802,7 @@ if ! which adb > /dev/null ; then
 fi
 
 if [ ! -z "$MISSING_PACKAGES" ] ; then
-    echo "${POSITIVE_COLOR}$PROGRAM_NAME depends on $MISSING_PACKAGES. Installing:${NC}"
+    echo -e "${POSITIVE_COLOR}$PROGRAM_NAME depends on $MISSING_PACKAGES. Installing:${NC}"
     echo "sudo apt install $MISSING_PACKAGES"
     sudo apt install $MISSING_PACKAGES
 fi
@@ -816,8 +816,8 @@ if [ -e "/snap/bin/lxc" ]; then
 fi
 
 if ! which lxd > /dev/null ; then
-    echo "${POSITIVE_COLOR}$PROGRAM_NAME uses LXD to download dependencies and build."
-    echo -n "${POSITIVE_COLOR}Would you like to install LXD? (y/n) ${NC}"
+    echo -e "${POSITIVE_COLOR}$PROGRAM_NAME uses LXD to download dependencies and build.${NC}"
+    echo -e -n "${POSITIVE_COLOR}Would you like to install LXD? (y/n) ${NC}"
     read REPLY
     echo
     if [ "$REPLY" = y ]
@@ -828,10 +828,10 @@ if ! which lxd > /dev/null ; then
         ensure_lxd_subuid
         newgrp lxd
 	    sudo usermod -a -G lxd $(whoami)
-        echo "${ERROR_COLOR}LXD is now setup but will only work after you restart your computer.${NC}"
+        echo -e "${ERROR_COLOR}LXD is now setup but will only work after you restart your computer.${NC}"
         exit 0
     else
-        echo "${ERROR_COLOR}$PROGRAM_NAME will not work without LXD. Bye.$OPTION${NC}"
+        echo -e "${ERROR_COLOR}$PROGRAM_NAME will not work without LXD. Bye.$OPTION${NC}"
         exit 1
     fi
 fi
@@ -903,7 +903,7 @@ while [ "$1" != "" ]; do
             *)
                 display_help
                 echo ""
-                echo "${ERROR_COLOR}error: unknown option: $OPTION${NC}"
+                echo -e "${ERROR_COLOR}error: unknown option: $OPTION${NC}"
                 exit 1
             ;;
             esac
@@ -936,13 +936,13 @@ check_command_parameter_count () {
     if  [ -n $MIN_PARAMETERS ] && [ $COUNT -lt $MIN_PARAMETERS ] ; then
         display_help
         echo ""
-        echo "${ERROR_COLOR}Command '$COMMAND' requires a minimum of $MIN_PARAMETERS parameters. $COUNT passed.${NC}"
+        echo -e "${ERROR_COLOR}Command '$COMMAND' requires a minimum of $MIN_PARAMETERS parameters. $COUNT passed.${NC}"
         exit 1
     fi
     if [ -n $MAX_PARAMETERS ] && [ $COUNT -gt $MAX_PARAMETERS ] ; then
         display_help
         echo ""
-        echo "${ERROR_COLOR}Command '$COMMAND' accepts at most $MAX_PARAMETERS parameters. $COUNT passed.${NC}"
+        echo -e "${ERROR_COLOR}Command '$COMMAND' accepts at most $MAX_PARAMETERS parameters. $COUNT passed.${NC}"
         exit 1
     fi
 }
@@ -956,7 +956,7 @@ detect_package () {
 
 check_changelog_exists () {
     if ! test -e debian/changelog ; then
-        echo "${ERROR_COLOR}No debian/changelog found in $PWD.${NC}"
+        echo -e "${ERROR_COLOR}No debian/changelog found in $PWD.${NC}"
         echo "If the source code is not available it can be automatically downloaded from the repositories using the 'source' command."
         exit 1
     fi
@@ -970,7 +970,7 @@ enter_package () {
     PACKAGE=$1
     if [ -n "$PACKAGE" ] ; then
         if ! cd $PACKAGE ; then
-            echo "${ERROR_COLOR}No directory $PACKAGE.${NC}"
+            echo -e "${ERROR_COLOR}No directory $PACKAGE.${NC}"
             exit 1
         fi
     fi
@@ -1006,10 +1006,10 @@ if [ -z "$COMMAND" ] ; then
     check_changelog_exists
     variables
     if [ "$DEPLOY" ] ; then
-        echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
+        echo -e "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH and deploying to device.${NC}"
     else
         echo "Could not find a device, will not deploy"
-        echo "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH.${NC}"
+        echo -e "${POSITIVE_COLOR}Building $PACKAGE for $TARGET_ARCH.${NC}"
     fi
     ensure_container
     install_dependencies
@@ -1024,8 +1024,8 @@ else
         setup-lxd)
             check_command_parameter_count 0 0
             if lxd_has_image_or_container ; then
-                echo "${ERROR_COLOR}You are already using LXD. Setting it up again will destroy all your existing LXD images and containers.${NC}"
-                echo -n "${ERROR_COLOR}Are you sure you wish to continue? (y/n) ${NC}"
+                echo -e "${ERROR_COLOR}You are already using LXD. Setting it up again will destroy all your existing LXD images and containers.${NC}"
+                echo -e -n "${ERROR_COLOR}Are you sure you wish to continue? (y/n) ${NC}"
                 read REPLY
                 echo
                 if [ "$REPLY" = y ]
@@ -1066,7 +1066,7 @@ else
         source)
             PACKAGE=$1
             if [ -z "$PACKAGE" ] ; then
-                echo "${ERROR_COLOR}Command 'source' requires a package name: $PROGRAM_NAME source PACKAGE_NAME${NC}"
+                echo -e "${ERROR_COLOR}Command 'source' requires a package name: $PROGRAM_NAME source PACKAGE_NAME${NC}"
                 exit 1
             fi
             check_command_parameter_count 1 1
@@ -1103,7 +1103,7 @@ else
                 build
             else
                 if [ -n "$NO_DEB" ] ; then
-                    echo "${ERROR_COLOR}Building dependent packages with the --no-deb option is not supported yet.${NC}"
+                    echo -e "${ERROR_COLOR}Building dependent packages with the --no-deb option is not supported yet.${NC}"
                     exit 1
                 fi
 
@@ -1139,7 +1139,7 @@ else
         *)
             display_help
             echo ""
-            echo "${ERROR_COLOR}error: unknown command: $COMMAND${NC}"
+            echo -e "${ERROR_COLOR}error: unknown command: $COMMAND${NC}"
             exit 1
         ;;
     esac
