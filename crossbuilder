@@ -276,7 +276,8 @@ config_container_dir_mount () {
 }
 
 start_container () {
-    STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
+    STATUS=$(lxc query "/1.0/containers/${LXD_CONTAINER}/state" | \
+                jq --raw-output '.status')
     if [ $STATUS = 'Stopped' ]; then
         # lxc start may give a failure code. It also may not, so we check
         # again in a bit.
@@ -289,7 +290,8 @@ start_container () {
     # Unfortunately we need to check again. We check for Started this time
     # because the monitor may be hung with the container failing, which will
     # give us much different output
-    STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
+    STATUS=$(lxc query "/1.0/containers/${LXD_CONTAINER}/state" | \
+                jq --raw-output '.status')
     if [ "$STATUS" != 'Running' ]; then
         echo $LXD_CONTAINER_FAILURE_MSG
         exit 1
@@ -660,7 +662,9 @@ check_for_container_network() {
     NETWORK_UP=0
     for i in `seq 1 10`
     do
-        if lxc info $LXD_CONTAINER | grep -e "eth0.*inet\b" > /dev/null 2>&1 ; then
+        if lxc query "/1.0/containers/${LXD_CONTAINER}/state" | \
+                jq -e '.network.eth0.addresses | any( .family == "inet" )' \
+                > /dev/null 2>&1 ; then
             NETWORK_UP=1
             break
         fi
@@ -801,6 +805,9 @@ if ! which dpkg-parsechangelog > /dev/null ; then
 fi
 if ! which adb > /dev/null ; then
     MISSING_PACKAGES="android-tools-adb $MISSING_PACKAGES"
+fi
+if ! which jq > /dev/null; then
+    MISSING_PACKAGES="jq $MISSING_PACKAGES"
 fi
 
 if [ ! -z "$MISSING_PACKAGES" ] ; then
