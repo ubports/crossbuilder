@@ -276,8 +276,8 @@ config_container_dir_mount () {
 }
 
 start_container () {
-    STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
-    if [ $STATUS = 'Stopped' ]; then
+    STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print toupper($2)}'`
+    if [ $STATUS = 'STOPPED' ]; then
         # lxc start may give a failure code. It also may not, so we check
         # again in a bit.
         if ! lxc start $LXD_CONTAINER; then
@@ -289,8 +289,8 @@ start_container () {
     # Unfortunately we need to check again. We check for Started this time
     # because the monitor may be hung with the container failing, which will
     # give us much different output
-    STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print $2}'`
-    if [ "$STATUS" != 'Running' ]; then
+    STATUS=`lxc info ${LXD_CONTAINER} | grep 'Status' | awk '{print toupper($2)}'`
+    if [ "$STATUS" != 'RUNNING' ]; then
         echo $LXD_CONTAINER_FAILURE_MSG
         exit 1
     fi
@@ -659,6 +659,10 @@ check_for_container_network() {
     for i in `seq 1 10`
     do
         if lxc info $LXD_CONTAINER | grep -e "eth0.*inet\b" > /dev/null 2>&1 ; then
+            NETWORK_UP=1
+            break
+        fi
+        if lxc info $LXD_CONTAINER | grep -A 5 -e "eth0" | grep 'State: UP' > /dev/null 2>&1 ; then
             NETWORK_UP=1
             break
         fi
