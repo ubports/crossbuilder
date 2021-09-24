@@ -148,11 +148,11 @@ variables () {
     HOST_FARCH=$(dpkg-architecture -f -a$HOST_ARCH -qDEB_BUILD_MULTIARCH)
     TARGET_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
     if [ "$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_ARCH)" != "$TARGET_ARCH" ]; then
-        DEB_BUILD_PROFILES="cross nocheck nodoc"
-        EXTRA_DEB_BUILD_OPTIONS="nocheck nodoc"
+        DEB_BUILD_PROFILES="cross nocheck nodoc noudeb"
+        EXTRA_DEB_BUILD_OPTIONS="nocheck nodoc noudeb"
     else
-        DEB_BUILD_PROFILES=""
-        EXTRA_DEB_BUILD_OPTIONS=""
+        DEB_BUILD_PROFILES="noudeb"
+        EXTRA_DEB_BUILD_OPTIONS="noudeb"
     fi
     TMP_DIR="$(mktemp -d --tmpdir crossbuilder.XXXXXX)"
     trap "rm -r $TMP_DIR" HUP INT TERM QUIT EXIT
