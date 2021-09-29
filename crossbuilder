@@ -164,7 +164,7 @@ check_lxd_accessible () {
 
     # On some distros the lxd is not runnig by default. Start if not started.
     if which systemctl > /dev/null 2>&1 && ! sudo systemctl status lxd > /dev/null 2>&1 ; then
-      echo "sudo systemctl start lxd"
+      echo "Starting LXD"
       sudo systemctl start lxd
     fi
 
