@@ -145,27 +145,12 @@ variables () {
     SOURCE_PATH_LOCAL=$MOUNTED_DIRECTORY
     SOURCE_PATH_CONTAINER=$MOUNT_POINT
     POST_DEPLOY_SCRIPT=.crossbuilder/post_deploy
-
-    # To fill the HOST_FARCH, TARGET_FARCH, DEB_BUILD_PROFILES and EXTRA_DEB_BUILD_OPTIONS variables,
-    # you need the `dpkg-architecture' command, which is not always installed on host macine,
-    # but is present in the ubports sdk container.
-		# So if there is no 'dpkg-architecture' command, don't worry, the variables will be filed later, upon container is ensured (in the "ensure_container" function).
-    if which dpkg-architecture > /dev/null 2>&1 ; then
-        HOST_FARCH=$(dpkg-architecture -f -a$HOST_ARCH -qDEB_BUILD_MULTIARCH)
-        TARGET_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
-        if [ "$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_ARCH)" != "$TARGET_ARCH" ]; then
-            # If you're changing these variables, please change them in the 'detect_farch_and_build_params_in_container_if_needed' function too.
-            DEB_BUILD_PROFILES="cross nocheck nodoc noudeb"
-            EXTRA_DEB_BUILD_OPTIONS="nocheck nodoc noudeb"
-        else
-            # If you're changing these variables, please change them in the 'detect_farch_and_build_params_in_container_if_needed' function too.
-            DEB_BUILD_PROFILES="noudeb"
-            EXTRA_DEB_BUILD_OPTIONS="noudeb"
-        fi
-    fi
-
     TMP_DIR="$(mktemp -d --tmpdir crossbuilder.XXXXXX)"
     trap "rm -r $TMP_DIR" HUP INT TERM QUIT EXIT
+
+    unset HOST_FARCH TARGET_FARCH DEB_BUILD_PROFILES EXTRA_DEB_BUILD_OPTIONS
+    # To set the HOST_FARCH, TARGET_FARCH, DEB_BUILD_PROFILES and EXTRA_DEB_BUILD_OPTIONS variables,
+    # you need to call the "ensure_container" function.
 }
 
 check_lxd_accessible () {
@@ -397,20 +382,16 @@ nonsdk_container_setup () {
     esac
 }
 
-detect_farch_and_build_params_in_container_if_needed () {
-    if [ -z $TARGET_FARCH ] || [ -z $HOST_FARCH ] ; then
-        HOST_FARCH=$(exec_container dpkg-architecture -f -a$HOST_ARCH -qDEB_BUILD_MULTIARCH)
-        TARGET_FARCH=$(exec_container dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
-        if [ "$(exec_container dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_ARCH)" != "$TARGET_ARCH" ]; then
-            # If you're changing these variables, please change them in the 'variables' function too.
-            DEB_BUILD_PROFILES="cross nocheck nodoc noudeb"
-            EXTRA_DEB_BUILD_OPTIONS="nocheck nodoc noudeb"
-        else
-            # If you're changing these variables, please change them in the 'variables' function too.
-            DEB_BUILD_PROFILES="noudeb"
-            EXTRA_DEB_BUILD_OPTIONS="noudeb"
-        fi
-    fi
+detect_farch_and_build_params_in_container () {
+   HOST_FARCH=$(exec_container dpkg-architecture -f -a$HOST_ARCH -qDEB_BUILD_MULTIARCH)
+   TARGET_FARCH=$(exec_container dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
+   if [ "$(exec_container dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_ARCH)" != "$TARGET_ARCH" ]; then
+       DEB_BUILD_PROFILES="cross nocheck nodoc noudeb"
+       EXTRA_DEB_BUILD_OPTIONS="nocheck nodoc noudeb"
+   else
+       DEB_BUILD_PROFILES="noudeb"
+       EXTRA_DEB_BUILD_OPTIONS="noudeb"
+   fi
 }
 
 create_container () {
@@ -449,8 +430,7 @@ create_container () {
     exec_container_root adduser $USERNAME sudo
     # set empty password for the user
     exec_container_root passwd --delete $USERNAME
-    # There is a chance, that some farch and build variables were not filled, due to missing packages on host machine. Use container to fill them if needed.
-    detect_farch_and_build_params_in_container_if_needed
+    detect_farch_and_build_params_in_container
     exec_container_root "printf 'export PKG_CONFIG_PATH=/usr/lib/$TARGET_FARCH/pkgconfig\n\
 export CROSS_COMPILE=$TARGET_FARCH-\n\
 export CC=$TARGET_FARCH-gcc\n\
@@ -467,8 +447,7 @@ ensure_container () {
         config_container_dir_mount
         start_container
         check_for_container_network
-        # There is a chance, that some farch and build variables were not filled, due to missing packages on host machine. Use container to fill them if needed.
-        detect_farch_and_build_params_in_container_if_needed
+        detect_farch_and_build_params_in_container
     else
         echo -e "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         create_container
@@ -620,11 +599,6 @@ install_dependencies () {
         workaround_multi_arch_deps ${TMP_DIR}/control
         exec_container_root apt-get update
 
-        # There is a chance, that some farch and build variables were not filled, due to missing packages on host machine. Use container to fill them if needed.
-        # The 'install_dependencies' function is always called after 'ensure_container', which calls the 'detect_farch_and_build_params_in_container_if_needed' function.
-        # So it is not needed here. But just to be sure, let's call it anyway.
-        detect_farch_and_build_params_in_container_if_needed
-
         # TODO: add build profiles to mk-build-deps once wishlist bug
         # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=894732 is fixed and
         # propagated to Ubuntu version we will use in the future.
@@ -706,11 +680,6 @@ build_make_install () {
 }
 
 build () {
-    # There is a chance, that some farch and build variables were not filled, due to missing packages on host machine. Use container to fill them if needed.
-    # The 'build' function is always called after 'ensure_container', which calls the 'detect_farch_and_build_params_in_container_if_needed' function.
-    # So it is not needed here. But just to be sure, let's call it anyway.
-    detect_farch_and_build_params_in_container_if_needed
-
     if [ -n "$NO_DEB" ] ; then
         build_make_install
     else
@@ -1332,8 +1301,7 @@ else
             enter_or_detect_package $1
             variables
             start_container_if_exists
-            # There is a chance, that some farch and build variables were not filled, due to missing packages on host machine. Use container to fill them if needed.
-            detect_farch_and_build_params_in_container_if_needed
+            detect_farch_and_build_params_in_container
             clean
         ;;
         deploy)
