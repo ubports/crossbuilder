@@ -200,8 +200,8 @@ is_subuid_setup () {
 
 ensure_lxd_subuid () {
     # Fetch user id and his group id to correctly setup subuid/subgid.
-    local USER_ID=$(id | sed 's/.*uid=\([0-9]\+\).*/\1/')
-    local GROUP_ID=$(id | sed 's/.*gid=\([0-9]\+\).*/\1/')
+    local USER_ID=$(id -u)
+    local GROUP_ID=$(id -g)
     if test -z "$FORCE_PRIVILEGED" && ! is_subuid_setup $USER_ID $GROUP_ID ; then
         echo -e "${ERROR_COLOR}LXD requires subuid to be setup adequately to mount directories in containers.${NC}"
         echo -e "${POSITIVE_COLOR}Would you like to do that now? (y/n) ${NC}"
