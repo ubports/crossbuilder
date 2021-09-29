@@ -149,7 +149,7 @@ variables () {
     # To fill the HOST_FARCH, TARGET_FARCH, DEB_BUILD_PROFILES and EXTRA_DEB_BUILD_OPTIONS variables,
     # you need the `dpkg-architecture' command, which is not always installed on host macine,
     # but is present in the ubports sdk container.
-    # So if there is no 'dpkg-architecture' command, don't worry, the variables will be filed later, upon container is ensured.
+		# So if there is no 'dpkg-architecture' command, don't worry, the variables will be filed later, upon container is ensured (in the "ensure_container" function).
     if which dpkg-architecture > /dev/null 2>&1 ; then
         HOST_FARCH=$(dpkg-architecture -f -a$HOST_ARCH -qDEB_BUILD_MULTIARCH)
         TARGET_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
