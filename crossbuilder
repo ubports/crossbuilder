@@ -1113,16 +1113,14 @@ detect_package () {
             PACKAGE=`dpkg-parsechangelog --show-field Source`
             PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
         else
-              # Get package name and version parsing the debian/changelog file using grep.
-              local RES=($(grep -P '^[^ ]+ \([^)]+\) [^;]+; urgency=.*$' debian/changelog | head -n1 | sed 's/^\([^ ]\+\) (\([^)]\+\)).*/\1 \2/'))
-              PACKAGE=${RES[0]}
-              PACKAGE_VERSION=${RES[1]}
-              #echo "PACKAGE=\"${PACKAGE}\""
-              #echo "PACKAGE_VERSION=\"${PACKAGE_VERSION}\""
-              if [ -z $PACKAGE ] || [ -z $PACKAGE_VERSION ] ; then
-                echo -e "${ERROR_COLOR}Coudln't find out package name and/or version from debian/changelog file.${NC}"
-                exit 1
-              fi
+            # Get package name and version parsing the debian/changelog file using grep.
+            local RES=($(grep -P '^[^ ]+ \([^)]+\) [^;]+; urgency=.*$' debian/changelog | head -n1 | sed 's/^\([^ ]\+\) (\([^)]\+\)).*/\1 \2/'))
+            PACKAGE=${RES[0]}
+            PACKAGE_VERSION=${RES[1]}
+        fi
+        if [ -z $PACKAGE ] || [ -z $PACKAGE_VERSION ] ; then
+            echo -e "${ERROR_COLOR}Coudln't find out package name and/or version from debian/changelog file.${NC}"
+            exit 1
         fi
     fi
 }
