@@ -859,6 +859,39 @@ deploy_to_device () {
     fi
 }
 
+detect_host_architecture() {
+    if which dpkg > /dev/null 2>&1 ; then
+        HOST_ARCH=`dpkg --print-architecture`
+    else
+        # To find out the host's debian architecture name, first find out debian multiarch tuple and use conversion table.
+        # Source: https://wiki.debian.org/Multiarch/Tuples
+
+        if [ -z $HOST_FARCH ] && which gcc > /dev/null 2>&1 ; then
+            HOST_FARCH=$(gcc -print-multiarch)
+
+            # On manjaro the 'gcc -print-multiarch' returns nothing.
+            # Use the 'gcc -dumpmachine' multiarch triplet result and strip the vendor part if the result contains it.
+            [ -z $HOST_FARCH ] && HOST_FARCH=$(gcc -dumpmachine | sed 's/^\([^-]\+\)-\([^-]\+\)-\([^-]\+\)-\([^-]\+\)$/\1-\3-\4/')
+        fi
+
+        declare -A MULTIARCH_TO_DEBIAN=( \
+            [x86_64-linux-gnu]=amd64 \
+            [arm-linux-gnu]=arm \
+            [aarch64-linux-gnu]=arm64 \
+            [aarch64-linux-gnu_ilp32]=arm64ilp32 \
+            [arm-linux-gnueabi]=armel \
+            [arm-linux-gnueabihf]=armhf \
+            [riscv64-linux-gnu]=riscv64 \
+            [x86_64-uefi]=uefi-amd6436 \
+            [aarch64-uefi]=uefi-arm6436 \
+            [arm-uefi]=uefi-armhf36 \
+            [i386-uefi]=uefi-i38636 \
+            [x86_64-linux-gnux32]=x32 \
+        )
+        HOST_ARCH=${MULTIARCH_TO_DEBIAN[$HOST_FARCH]}
+    fi
+}
+
 MISSING_PACKAGES=
 if ! which adb > /dev/null 2>&1 ; then
     if which apt > /dev/null 2>&1 ; then
@@ -930,70 +963,7 @@ fi
 ensure_lxd_subuid
 check_lxd_accessible
 
-if [ -z $HOST_ARCH ] ; then
-    if which dpkg > /dev/null 2>&1 ; then
-        HOST_ARCH=`dpkg --print-architecture`
-    else
-        # To find out the host's debian architecture name, first find out debian multiarch tuple and use conversion table.
-        # Source: https://wiki.debian.org/Multiarch/Tuples
-
-        if [ -z $HOST_FARCH ] && which gcc > /dev/null 2>&1 ; then
-            HOST_FARCH=$(gcc -print-multiarch)
-
-            # On manjaro the 'gcc -print-multiarch' returns nothing.
-            # Use the 'gcc -dumpmachine' multiarch triplet result and strip the vendor part if the result contains it.
-            [ -z $HOST_FARCH ] && HOST_FARCH=$(gcc -dumpmachine | sed 's/^\([^-]\+\)-\([^-]\+\)-\([^-]\+\)-\([^-]\+\)$/\1-\3-\4/')
-        fi
-        #echo "HOST_FARCH=\"${HOST_FARCH}\""
-
-        declare -A MULTIARCH_TO_DEBIAN=( \
-            [alpha-linux-gnu]=alpha \
-            [x86_64-linux-gnu]=amd64 \
-            [arc-linux-gnu]=arc \
-            [arm-linux-gnu]=arm \
-            [aarch64-linux-gnu]=arm64 \
-            [aarch64-linux-gnu_ilp32]=arm64ilp32 \
-            [arm-linux-gnueabi]=armel \
-            [arm-linux-gnueabihf]=armhf \
-            [hppa-linux-gnu]=hppa \
-            [i386-gnu]=hurd-i386 \
-            [i386-linux-gnu]=i386 \
-            [ia64-linux-gnu]=ia64 \
-            [x86_64-kfreebsd-gnu]=kfreebsd-amd64 \
-            [i386-kfreebsd-gnu]=kfreebsd-i386 \
-            [m68k-linux-gnu]=m68k \
-            [mips-linux-gnu]=mips \
-            [mipsel-linux-gnu]=mipsel \
-            [mips64-linux-gnuabi64]=mips64 \
-            [mips64el-linux-gnuabi64]=mips64el \
-            [mips64-linux-gnuabin32]=mipsn32 \
-            [mips64el-linux-gnuabin32]=mipsn32el \
-            [mipsisa32r6-linux-gnu]=mipsr6 \
-            [mipsisa32r6el-linux-gnu]=mipsr6el \
-            [mipsisa64r6-linux-gnuabi64]=mips64r6 \
-            [mipsisa64r6el-linux-gnuabi64]=mips64r6el \
-            [mipsisa64r6-linux-gnuabin32]=mipsn32r6 \
-            [mipsisa64r6el-linux-gnuabin32]=mipsn32r6el \
-            [powerpc-linux-gnu]=powerpc \
-            [powerpc-linux-gnuspe]=powerpcspe \
-            [powerpc64-linux-gnu]=ppc64 \
-            [powerpc64le-linux-gnu]=ppc64el \
-            [riscv64-linux-gnu]=riscv64 \
-            [s390-linux-gnu]=s390 \
-            [s390x-linux-gnu]=s390x \
-            [sh4-linux-gnu]=sh4 \
-            [sparc-linux-gnu]=sparc \
-            [sparc64-linux-gnu]=sparc64 \
-            [x86_64-uefi]=uefi-amd6436 \
-            [aarch64-uefi]=uefi-arm6436 \
-            [arm-uefi]=uefi-armhf36 \
-            [i386-uefi]=uefi-i38636 \
-            [x86_64-linux-gnux32]=x32 \
-        )
-        HOST_ARCH=${MULTIARCH_TO_DEBIAN[$HOST_FARCH]}
-    fi
-fi
-
+[ -z $HOST_ARCH ] && detect_host_architecture
 if [ -z $HOST_ARCH ] ; then
     echo -e "${ERROR_COLOR}Coudln't find out debian architecture name of this device.${NC}"
     echo -e "If you know it, set the HOST_ARCH variable before running crossbuilder."
