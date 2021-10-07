@@ -213,17 +213,15 @@ ensure_lxd_subuid () {
             if [ ! -f "/etc/subuid" ] ; then
               sudo touch /etc/subuid
             fi
-            sudo usermod --add-subuids "10000-75536" `whoami`
             sudo usermod --add-subuids "${USER_ID}-${USER_ID}" root
-            sudo usermod --add-subuids "10000-75536" root
+            sudo usermod --add-subuids "100000-165535" root
 
             # Setup subgid.
             if [ ! -f "/etc/subgid" ] ; then
               sudo touch /etc/subgid
             fi
-            sudo usermod --add-subgids "10000-75536" `whoami`
             sudo usermod --add-subgids "${GROUP_ID}-${GROUP_ID}" root
-            sudo usermod --add-subgids "10000-75536" root
+            sudo usermod --add-subgids "100000-165535" root
 
             if which service > /dev/null 2>&1; then
                 echo "sudo service lxd restart"
