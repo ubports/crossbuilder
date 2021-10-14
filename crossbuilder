@@ -568,7 +568,7 @@ install_dependencies () {
         QMAKE=$(exec_container "find /usr -executable -type f -path '*/bin/*' -name '*qmake*' | grep $TARGET_FARCH" | head -1)
         if [ -n "$QMAKE" ]; then
             echo -e "${POSITIVE_COLOR}Setting $QMAKE as the default qmake binary.${NC}"
-            exec_container_root "ln -s $QMAKE /usr/local/bin/qmake"
+            exec_container_root "ln -s -f $QMAKE /usr/local/bin/qmake"
             exec_container_root "printf '/usr/local/bin\n/usr/lib/$TARGET_FARCH\n' > /usr/share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf"
             exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/qt5.conf
             # Fix moc and other missing tools for cmake
