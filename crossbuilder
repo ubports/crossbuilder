@@ -153,6 +153,25 @@ variables () {
     # you need to call the "ensure_container" function.
 }
 
+# Runs action, provided as first argument, on lxd service detected in system.
+lxd_service_action () {
+    local action=$1
+
+    if which service > /dev/null 2>&1; then
+        echo "sudo service lxd ${action}"
+        sudo service lxd ${action}
+    elif which snap > /dev/null 2>&1 && snap connections lxd > /dev/null 2>&1 ; then
+        echo "sudo snap ${action} lxd"
+        sudo snap ${action} lxd
+    elif which systemctl > /dev/null 2>&1 && systemctl cat lxd > /dev/null 2>&1 ; then
+        echo "sudo systemctl ${action} lxd"
+        sudo systemctl ${action} lxd
+    else
+        echo -e "${ERROR_COLOR}Can't detect LXD service.${NC}"
+        return 1
+    fi
+}
+
 check_lxd_accessible () {
     # /bin/lxd is replaced with a script which tells you to install the lxd snap
     # on later versions of Ubuntu.
@@ -162,17 +181,21 @@ check_lxd_accessible () {
         exit 1
     fi
 
-    # On some distros the lxd is not runnig by default. Start if not started.
-    if which systemctl > /dev/null 2>&1 && ! sudo systemctl status lxd > /dev/null 2>&1 ; then
-      echo "Starting LXD"
-      sudo systemctl start lxd
-    fi
-
-    if ! lxc info > /dev/null 2>&1 ; then
-        echo -e "${ERROR_COLOR}LXD was installed but is not accessible."
-        echo "Check the 'lxd' group exists and you are a member, then restart your computer."
-        echo -e "For more information, run 'lxc info'.${NC}"
-        exit 1
+    if ! LXC_INFO_OUTPUT=$(lxc info 2>&1) ; then
+        case "$LXC_INFO_OUTPUT" in
+            'Error: Get "http://unix.socket/1.0":'*)
+                if ! lxd_service_action start || ! lxc info >/dev/null 2>&1 ; then
+                    echo -e "${ERROR_COLOR}LXD service was not running and failed to start."
+                    echo -e "For more information, run 'lxc info'.${NC}"
+                    exit 1
+                fi
+                ;;
+            *)
+                echo -e "${ERROR_COLOR}LXD was installed but is not accessible."
+                echo "Check the 'lxd' group exists and you are a member, then restart your computer."
+                echo -e "For more information, run 'lxc info'.${NC}"
+                exit 1
+        esac
     fi
 }
 
@@ -223,16 +246,7 @@ ensure_lxd_subuid () {
             sudo usermod --add-subgids "${GROUP_ID}-${GROUP_ID}" root
             sudo usermod --add-subgids "100000-165535" root
 
-            if which service > /dev/null 2>&1; then
-                echo "sudo service lxd restart"
-                sudo service lxd restart
-            elif which snap > /dev/null 2>&1 && snap connections lxd > /dev/null 2>&1 ; then
-                echo "sudo snap restart lxd"
-                sudo snap restart lxd
-            elif which systemctl > /dev/null 2>&1 ; then
-                echo "sudo systemctl restart lxd"
-                sudo systemctl restart lxd
-            fi
+            lxd_service_action restart
         else
             echo -e "${ERROR_COLOR}Unable to set up LXD for use in crossbuilder. Subuid setup refused.${NC}"
             exit 1
@@ -937,8 +951,7 @@ if ! which lxd > /dev/null ; then
         elif which pacman > /dev/null 2>&1 ; then
             echo "sudo pacman -Syu --noconfirm lxd"
             sudo pacman -Syu lxd
-            echo "sudo systemctl start lxd"
-            sudo systemctl start lxd
+            lxd_service_action start
         elif which snap > /dev/null 2>&1 ; then
             echo "sudo snap install lxd"
             sudo snap install lxd
