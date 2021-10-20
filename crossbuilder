@@ -157,13 +157,16 @@ variables () {
 lxd_service_action () {
     local action=$1
 
-    if which service > /dev/null 2>&1; then
+    # upstart
+    if which service > /dev/null 2>&1 && [ -f "/etc/init/lxd.conf" ] ; then
         echo "sudo service lxd ${action}"
         sudo service lxd ${action}
-    elif which snap > /dev/null 2>&1 && snap connections lxd > /dev/null 2>&1 ; then
+    # snap
+    elif snap connections lxd > /dev/null 2>&1 ; then
         echo "sudo snap ${action} lxd"
         sudo snap ${action} lxd
-    elif which systemctl > /dev/null 2>&1 && systemctl cat lxd > /dev/null 2>&1 ; then
+    # systemd
+    elif systemctl cat lxd > /dev/null 2>&1 ; then
         echo "sudo systemctl ${action} lxd"
         sudo systemctl ${action} lxd
     else
