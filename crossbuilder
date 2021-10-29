@@ -145,17 +145,34 @@ variables () {
     SOURCE_PATH_LOCAL=$MOUNTED_DIRECTORY
     SOURCE_PATH_CONTAINER=$MOUNT_POINT
     POST_DEPLOY_SCRIPT=.crossbuilder/post_deploy
-    HOST_FARCH=$(dpkg-architecture -f -a$HOST_ARCH -qDEB_BUILD_MULTIARCH)
-    TARGET_FARCH=$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
-    if [ "$(dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_ARCH)" != "$TARGET_ARCH" ]; then
-        DEB_BUILD_PROFILES="cross nocheck nodoc noudeb"
-        EXTRA_DEB_BUILD_OPTIONS="nocheck nodoc noudeb"
-    else
-        DEB_BUILD_PROFILES="noudeb"
-        EXTRA_DEB_BUILD_OPTIONS="noudeb"
-    fi
     TMP_DIR="$(mktemp -d --tmpdir crossbuilder.XXXXXX)"
     trap "rm -r $TMP_DIR" HUP INT TERM QUIT EXIT
+
+    unset HOST_FARCH TARGET_FARCH DEB_BUILD_PROFILES EXTRA_DEB_BUILD_OPTIONS
+    # To set the HOST_FARCH, TARGET_FARCH, DEB_BUILD_PROFILES and EXTRA_DEB_BUILD_OPTIONS variables,
+    # you need to call the "ensure_container" function.
+}
+
+# Runs action, provided as first argument, on lxd service detected in system.
+lxd_service_action () {
+    local action=$1
+
+    # upstart
+    if which service > /dev/null 2>&1 && [ -f "/etc/init/lxd.conf" ] ; then
+        echo "sudo service lxd ${action}"
+        sudo service lxd ${action}
+    # snap
+    elif snap connections lxd > /dev/null 2>&1 ; then
+        echo "sudo snap ${action} lxd"
+        sudo snap ${action} lxd
+    # systemd
+    elif systemctl cat lxd > /dev/null 2>&1 ; then
+        echo "sudo systemctl ${action} lxd"
+        sudo systemctl ${action} lxd
+    else
+        echo -e "${ERROR_COLOR}Can't detect LXD service.${NC}"
+        return 1
+    fi
 }
 
 check_lxd_accessible () {
@@ -167,11 +184,21 @@ check_lxd_accessible () {
         exit 1
     fi
 
-    if ! lxc info > /dev/null 2>&1 ; then
-        echo -e "${ERROR_COLOR}LXD was installed but is not accessible."
-        echo "Check the 'lxd' group exists and you are a member, then restart your computer."
-        echo -e "For more information, run 'lxc info'.${NC}"
-        exit 1
+    if ! LXC_INFO_OUTPUT=$(lxc info 2>&1) ; then
+        case "$LXC_INFO_OUTPUT" in
+            'Error: Get "http://unix.socket/1.0":'*)
+                if ! lxd_service_action start || ! lxc info >/dev/null 2>&1 ; then
+                    echo -e "${ERROR_COLOR}LXD service was not running and failed to start."
+                    echo -e "For more information, run 'lxc info'.${NC}"
+                    exit 1
+                fi
+                ;;
+            *)
+                echo -e "${ERROR_COLOR}LXD was installed but is not accessible."
+                echo "Check the 'lxd' group exists and you are a member, then restart your computer."
+                echo -e "For more information, run 'lxc info'.${NC}"
+                exit 1
+        esac
     fi
 }
 
@@ -186,32 +213,43 @@ lxd_has_image_or_container () {
 }
 
 is_subuid_setup () {
-    if ! grep "root:1000:1" /etc/subuid > /dev/null ; then
+    local USER_ID=$1
+    local GROUP_ID=$2
+    if ! grep "root:${USER_ID}:1" /etc/subuid > /dev/null ; then
         return 1
     fi
-    if ! grep "root:1000:1" /etc/subgid > /dev/null ; then
+    if ! grep "root:${GROUP_ID}:1" /etc/subgid > /dev/null ; then
         return 1
     fi
     return 0
 }
 
 ensure_lxd_subuid () {
-    if test -z "$FORCE_PRIVILEGED" && ! is_subuid_setup ; then
+    # Fetch user id and his group id to correctly setup subuid/subgid.
+    local USER_ID=$(id -u)
+    local GROUP_ID=$(id -g)
+    if test -z "$FORCE_PRIVILEGED" && ! is_subuid_setup $USER_ID $GROUP_ID ; then
         echo -e "${ERROR_COLOR}LXD requires subuid to be setup adequately to mount directories in containers.${NC}"
         echo -e "${POSITIVE_COLOR}Would you like to do that now? (y/n) ${NC}"
         read REPLY
         echo
         if [ "$REPLY" = y ]
         then
-            sudo usermod --add-subuids 1000-1000 root
-            sudo usermod --add-subgids 1000-1000 root
-            if which service > /dev/null ; then
-                sudo service lxd restart
-            elif which snap > /dev/null && snap connections lxd > /dev/null ; then
-                sudo snap restart lxd
-            else
-                sudo systemctl restart lxd
+            # Setup subuid.
+            if [ ! -f "/etc/subuid" ] ; then
+              sudo touch /etc/subuid
             fi
+            sudo usermod --add-subuids "${USER_ID}-${USER_ID}" root
+            sudo usermod --add-subuids "100000-165535" root
+
+            # Setup subgid.
+            if [ ! -f "/etc/subgid" ] ; then
+              sudo touch /etc/subgid
+            fi
+            sudo usermod --add-subgids "${GROUP_ID}-${GROUP_ID}" root
+            sudo usermod --add-subgids "100000-165535" root
+
+            lxd_service_action restart
         else
             echo -e "${ERROR_COLOR}Unable to set up LXD for use in crossbuilder. Subuid setup refused.${NC}"
             exit 1
@@ -250,7 +288,16 @@ setup_lxd () {
         then
             if ! which zpool > /dev/null ; then
                 echo -e "${POSITIVE_COLOR}Installing ZFS.${NC}"
-                sudo apt-get install -y zfsutils-linux
+                if which apt-get > /dev/null 2>&1 ; then
+                    echo "sudo apt-get install -y zfsutils-linux"
+                    sudo apt-get install -y zfsutils-linux
+                elif which pacman > /dev/null 2>&1 ; then
+                    echo "sudo pacman -Syu zfs-utils"
+                    sudo pacman -Syu zfs-utils
+                else
+                    echo -e "${ERROR_COLOR}No known package manager found to install zfs utilities.${NC}"
+                    exit 1
+                fi
             fi
             LXD_POOL=~/zfs/lxd.img
             echo -e "${POSITIVE_COLOR}Creating file $LXD_POOL to contain all of LXD's images and containers.${NC}"
@@ -350,6 +397,18 @@ nonsdk_container_setup () {
     esac
 }
 
+detect_farch_and_build_params_in_container () {
+   HOST_FARCH=$(exec_container dpkg-architecture -f -a$HOST_ARCH -qDEB_BUILD_MULTIARCH)
+   TARGET_FARCH=$(exec_container dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
+   if [ "$(exec_container dpkg-architecture -f -a$TARGET_ARCH -qDEB_BUILD_ARCH)" != "$TARGET_ARCH" ]; then
+       DEB_BUILD_PROFILES="cross nocheck nodoc noudeb"
+       EXTRA_DEB_BUILD_OPTIONS="nocheck nodoc noudeb"
+   else
+       DEB_BUILD_PROFILES="noudeb"
+       EXTRA_DEB_BUILD_OPTIONS="noudeb"
+   fi
+}
+
 create_container () {
     lxc remote --protocol=simplestreams --public=true --accept-certificate=true add ubports-sdk https://sdk-images.ubports.com || true
     lxc init $LXD_IMAGE $LXD_CONTAINER $EPHEMERAL_FLAG
@@ -386,6 +445,7 @@ create_container () {
     exec_container_root adduser $USERNAME sudo
     # set empty password for the user
     exec_container_root passwd --delete $USERNAME
+    detect_farch_and_build_params_in_container
     exec_container_root "printf 'export PKG_CONFIG_PATH=/usr/lib/$TARGET_FARCH/pkgconfig\n\
 export CROSS_COMPILE=$TARGET_FARCH-\n\
 export CC=$TARGET_FARCH-gcc\n\
@@ -401,6 +461,8 @@ ensure_container () {
         echo -e "${POSITIVE_COLOR}LXD container $LXD_CONTAINER already exists.${NC}"
         config_container_dir_mount
         start_container
+        check_for_container_network
+        detect_farch_and_build_params_in_container
     else
         echo -e "${POSITIVE_COLOR}Creating LXD container $LXD_CONTAINER using $LXD_IMAGE.${NC}"
         create_container
@@ -458,7 +520,8 @@ get_source_package () {
         exit 1
     fi
 
-    PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version -l $PACKAGE*/debian/changelog`
+    PACKAGE_VERSION=$(exec_container dpkg-parsechangelog --show-field Version -l $PACKAGE*/debian/changelog)
+
     exec_container "mv $PACKAGE*.orig.tar.* $PACKAGE*diff.* $PACKAGE*debian.tar* $PACKAGE*.dsc $USERDIR/" || true
     mv $PACKAGE-*/* .
     mv $PACKAGE-*/.[!.]* . || true
@@ -550,6 +613,7 @@ install_dependencies () {
         cp debian/control "${TMP_DIR}/"
         workaround_multi_arch_deps ${TMP_DIR}/control
         exec_container_root apt-get update
+
         # TODO: add build profiles to mk-build-deps once wishlist bug
         # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=894732 is fixed and
         # propagated to Ubuntu version we will use in the future.
@@ -671,8 +735,22 @@ check_for_container_network() {
         sleep 1
     done
     if [ $NETWORK_UP -ne 1 ] ; then
-        echo -e "${ERROR_COLOR}Container is not connected to the Internet.${NC}"
-        exit 1
+        # On manjaro the 16.04 containers can't get ip4 address.
+        # This can be corrected by running 'dhclient' in container.
+        exec_container_root "dhclient"
+        for i in `seq 1 10`
+        do
+            if lxc query "/1.0/containers/${LXD_CONTAINER}/state" | jq -e '.network.eth0.addresses | any( .family == "inet" )' > /dev/null 2>&1 ; then
+                echo -e "${POSITIVE_COLOR}Container is connected to the Internet.${NC}"
+                NETWORK_UP=1
+                break
+            fi
+            sleep 1
+        done
+        if [ $NETWORK_UP -ne 1 ] ; then
+            echo -e "${ERROR_COLOR}Container is not connected to the Internet.${NC}"
+            exit 1
+        fi
     fi
 
 }
@@ -796,15 +874,46 @@ deploy_to_device () {
     fi
 }
 
+detect_host_architecture() {
+    if which dpkg > /dev/null 2>&1 ; then
+        HOST_ARCH=`dpkg --print-architecture`
+    else
+        # To find out the host's debian architecture name, first find out debian multiarch tuple and use conversion table.
+        # Source: https://wiki.debian.org/Multiarch/Tuples
+
+        if [ -z $HOST_FARCH ] && which gcc > /dev/null 2>&1 ; then
+            HOST_FARCH=$(gcc -print-multiarch)
+
+            # On manjaro the 'gcc -print-multiarch' returns nothing.
+            # Use the 'gcc -dumpmachine' multiarch triplet result and strip the vendor part if the result contains it.
+            [ -z $HOST_FARCH ] && HOST_FARCH=$(gcc -dumpmachine | sed 's/^\([^-]\+\)-\([^-]\+\)-\([^-]\+\)-\([^-]\+\)$/\1-\3-\4/')
+        fi
+
+        declare -A MULTIARCH_TO_DEBIAN=( \
+            [x86_64-linux-gnu]=amd64 \
+            [arm-linux-gnu]=arm \
+            [aarch64-linux-gnu]=arm64 \
+            [aarch64-linux-gnu_ilp32]=arm64ilp32 \
+            [arm-linux-gnueabi]=armel \
+            [arm-linux-gnueabihf]=armhf \
+            [riscv64-linux-gnu]=riscv64 \
+            [x86_64-uefi]=uefi-amd6436 \
+            [aarch64-uefi]=uefi-arm6436 \
+            [arm-uefi]=uefi-armhf36 \
+            [i386-uefi]=uefi-i38636 \
+            [x86_64-linux-gnux32]=x32 \
+        )
+        HOST_ARCH=${MULTIARCH_TO_DEBIAN[$HOST_FARCH]}
+    fi
+}
+
 MISSING_PACKAGES=
-if ! which dpkg > /dev/null ; then
-    MISSING_PACKAGES="dpkg"
-fi
-if ! which dpkg-parsechangelog > /dev/null ; then
-    MISSING_PACKAGES="dpkg-dev $MISSING_PACKAGES"
-fi
-if ! which adb > /dev/null ; then
-    MISSING_PACKAGES="android-tools-adb $MISSING_PACKAGES"
+if ! which adb > /dev/null 2>&1 ; then
+    if which apt > /dev/null 2>&1 ; then
+        MISSING_PACKAGES="android-tools-adb $MISSING_PACKAGES"
+    elif which pacman > /dev/null 2>&1 ; then
+        MISSING_PACKAGES="android-tools $MISSING_PACKAGES"
+    fi
 fi
 if ! which jq > /dev/null; then
     MISSING_PACKAGES="jq $MISSING_PACKAGES"
@@ -812,8 +921,16 @@ fi
 
 if [ ! -z "$MISSING_PACKAGES" ] ; then
     echo -e "${POSITIVE_COLOR}$PROGRAM_NAME depends on $MISSING_PACKAGES. Installing:${NC}"
-    echo "sudo apt install $MISSING_PACKAGES"
-    sudo apt install $MISSING_PACKAGES
+    if which apt > /dev/null 2>&1 ; then
+        echo "sudo apt install $MISSING_PACKAGES"
+        sudo apt install $MISSING_PACKAGES
+    elif which pacman > /dev/null 2>&1 ; then
+        echo "sudo pacman -Syu $MISSING_PACKAGES"
+        sudo pacman -Syu $MISSING_PACKAGES
+    else
+        echo -e "${ERROR_COLOR}No known package manager found to install missing packages.${NC}"
+        exit 1
+    fi
 fi
 
 if stat --file-system $HOME | grep ecrypt ; then
@@ -831,8 +948,20 @@ if ! which lxd > /dev/null ; then
     echo
     if [ "$REPLY" = y ]
     then
-        echo "sudo apt-get install -y lxd lxd-client"
-        sudo apt-get install -y lxd lxd-client
+        if which apt-get > /dev/null 2>&1 ; then
+            echo "sudo apt-get install -y lxd lxd-client"
+            sudo apt-get install -y lxd lxd-client
+        elif which pacman > /dev/null 2>&1 ; then
+            echo "sudo pacman -Syu --noconfirm lxd"
+            sudo pacman -Syu lxd
+            lxd_service_action start
+        elif which snap > /dev/null 2>&1 ; then
+            echo "sudo snap install lxd"
+            sudo snap install lxd
+        else
+            echo -e "${ERROR_COLOR}No known package manager found to install lxd containers.${NC}"
+            exit 1
+        fi
         setup_lxd
         ensure_lxd_subuid
         newgrp lxd
@@ -845,10 +974,16 @@ if ! which lxd > /dev/null ; then
     fi
 fi
 
-check_lxd_accessible
 ensure_lxd_subuid
+check_lxd_accessible
 
-HOST_ARCH=`dpkg --print-architecture`
+[ -z $HOST_ARCH ] && detect_host_architecture
+if [ -z $HOST_ARCH ] ; then
+    echo -e "${ERROR_COLOR}Coudln't find out debian architecture name of this device.${NC}"
+    echo -e "If you know it, set the HOST_ARCH variable before running crossbuilder."
+    exit 1
+fi
+
 TARGET_ARCH=armhf
 TARGET_UBUNTU=16.04
 
@@ -958,8 +1093,19 @@ check_command_parameter_count () {
 
 detect_package () {
     if test -e debian/changelog ; then
-        PACKAGE=`dpkg-parsechangelog --show-field Source`
-        PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
+        if which dpkg-parsechangelog > /dev/null 2>&1 ; then
+            PACKAGE=`dpkg-parsechangelog --show-field Source`
+            PACKAGE_VERSION=`dpkg-parsechangelog --show-field Version`
+        else
+            # Get package name and version parsing the debian/changelog file using grep.
+            local RES=($(grep -P '^[^ ]+ \([^)]+\) [^;]+; urgency=.*$' debian/changelog | head -n1 | sed 's/^\([^ ]\+\) (\([^)]\+\)).*/\1 \2/'))
+            PACKAGE=${RES[0]}
+            PACKAGE_VERSION=${RES[1]}
+        fi
+        if [ -z $PACKAGE ] || [ -z $PACKAGE_VERSION ] ; then
+            echo -e "${ERROR_COLOR}Coudln't find out package name and/or version from debian/changelog file.${NC}"
+            exit 1
+        fi
     fi
 }
 
@@ -1137,6 +1283,7 @@ else
             enter_or_detect_package $1
             variables
             start_container_if_exists
+            detect_farch_and_build_params_in_container
             clean
         ;;
         deploy)
