@@ -138,7 +138,8 @@ variables () {
     fi
     USERDIR=/home/$USERNAME
     SOURCE_REPOSITORY=$USERDIR/source_repository
-    SCRIPT_DIR=`dirname $0`
+    SCRIPT_REALPATH=$(realpath "${0}")
+    SCRIPT_DIR=$(dirname "${SCRIPT_REALPATH}")
     CREATE_REPO_SCRIPT=create_repository.sh
     MOUNTED_DIRECTORY=$PWD
     MOUNT_POINT=$USERDIR/$PACKAGE
