@@ -86,6 +86,11 @@ exec_device () {
     adb shell "$@"
 }
 
+push_device () {
+    #echo adb push "$@"
+    adb push "$@"
+}
+
 exec_container_root () {
     command="$@"
     #echo lxc exec $LXD_CONTAINER "$@"
@@ -780,7 +785,7 @@ deploy_deb () {
     echo -e "${POSITIVE_COLOR}Transferring Debian packages to device.${NC}"
     # tranfer debian packages to device
     exec_device mkdir -p /tmp/repo
-    adb push $DEBS_TARBALL /tmp/repo/
+    push_device $DEBS_TARBALL /tmp/repo/
     exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm -f /tmp/repo/$DEBS_TARBALL_ROOT*"
 
     # install debian packages on device
@@ -797,7 +802,7 @@ deploy_deb () {
         # create local deb repository on device
         rm -f $CREATE_REPO_SCRIPT
         if ! adb pull /tmp/repo/$CREATE_REPO_SCRIPT 2> /dev/null ; then
-            adb push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
+            push_device $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
             exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
             exec_device "printf 'deb file:/tmp/repo/ /\n' > /tmp/repo/sources.list"
             exec_device "cp /etc/apt/sources.list /tmp/repo/all.list"
@@ -868,7 +873,7 @@ deploy_to_device () {
     # execute post deploy
     if test -e $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT ; then
         echo -e "${POSITIVE_COLOR}Execute project specific post deploy script ($POST_DEPLOY_SCRIPT).${NC}"
-        adb push $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT /tmp
+        push_device $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT /tmp
         exec_device sh /tmp/$(basename $POST_DEPLOY_SCRIPT)
     else
         echo -e "${POSITIVE_COLOR}If a script named $POST_DEPLOY_SCRIPT existed, it would be executed on device after every deploy.${NC}"
