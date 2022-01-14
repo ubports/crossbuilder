@@ -91,6 +91,15 @@ push_device () {
     adb push "$@"
 }
 
+check_file_exists_device () {
+    if ! adb pull "$1" /tmp 2>&1 >/dev/null ; then
+        return 1
+    fi
+
+    rm -f "/tmp/$(basename $1)"
+    return 0
+}
+
 exec_container_root () {
     command="$@"
     #echo lxc exec $LXD_CONTAINER "$@"
@@ -800,7 +809,7 @@ deploy_deb () {
         check_for_device_network
         echo -e "${POSITIVE_COLOR}Upgrading packages already installed on device with newly built ones.${NC}"
         # create local deb repository on device
-        if ! adb pull /tmp/repo/$CREATE_REPO_SCRIPT 2> /dev/null ; then
+        if ! check_file_exists_device /tmp/repo/$CREATE_REPO_SCRIPT ; then
             push_device $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
             exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
             exec_device "printf 'deb file:/tmp/repo/ /\n' > /tmp/repo/sources.list"
@@ -810,7 +819,6 @@ deploy_deb () {
             exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
 #            exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
         else
-            rm -f $CREATE_REPO_SCRIPT
             exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
         fi;
 
@@ -854,8 +862,7 @@ deploy_to_device () {
 
     # check password is correct
     exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A touch /tmp/password_ok
-    if adb pull /tmp/password_ok ; then
-        rm -f password_ok
+    if check_file_exists_device /tmp/password_ok ; then
         exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A rm -f /tmp/password_ok
     else
         echo -e "${ERROR_COLOR}Device password incorrect. Use --password to pass the correct one or write it in $DEVICE_PASSWORD_FILE.${NC}"
