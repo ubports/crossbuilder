@@ -929,6 +929,72 @@ detect_host_architecture() {
     fi
 }
 
+while [ "$1" != "" ]; do
+    OPTION=`echo $1 | awk -F= '{print $1}'`
+    VALUE=`echo $1 | awk -F= '{print $2}'`
+    case $1 in
+        -*)
+            case $OPTION in
+            --packages)
+                PACKAGES_TO_DEPLOY=$VALUE
+            ;;
+            --architecture)
+                TARGET_ARCH=$VALUE
+            ;;
+            --ubuntu)
+                TARGET_UBUNTU=$VALUE
+            ;;
+            --lxd-image)
+                LXD_IMAGE=$VALUE
+            ;;
+            --password)
+                DEVICE_PASSWORD=$VALUE
+            ;;
+            --no-deb)
+                NO_DEB=1
+            ;;
+            --deploy-path)
+                DEPLOY_PATH=$VALUE
+            ;;
+            --privileged)
+                FORCE_PRIVILEGED=1
+            ;;
+            --ephemeral)
+                EPHEMERAL_CONTAINER=1
+                EPHEMERAL_FLAG=--ephemeral
+            ;;
+            --parallel)
+                PARALLEL_BUILD=$VALUE
+            ;;
+            --help)
+                display_help
+                exit 0
+            ;;
+            *)
+                display_help
+                echo ""
+                echo -e "${ERROR_COLOR}Error: unknown option: $OPTION${NC}"
+                exit 1
+            ;;
+            esac
+            shift
+        ;;
+        *)
+            break
+        ;;
+    esac
+done
+
+COMMAND=$1
+if [ -n "$COMMAND" ] ; then
+    shift
+fi
+
+if [ "$COMMAND" = "help" ] ; then
+    display_help
+    exit 0
+fi
+
 MISSING_PACKAGES=
 if ! which adb > /dev/null 2>&1 ; then
     if which apt > /dev/null 2>&1 ; then
@@ -1006,92 +1072,27 @@ if [ -z $HOST_ARCH ] ; then
     exit 1
 fi
 
-TARGET_ARCH=armhf
-TARGET_UBUNTU=16.04
+PARALLEL_BUILD=${PARALLEL_BUILD:-$((`nproc` + 1))}
 
-PARALLEL_BUILD=$((`nproc` + 1))
-
-DEVICE_PASSWORD=0000
 DEVICE_PASSWORD_FILE=~/.config/crossbuilder/device_password
-[ -e "$DEVICE_PASSWORD_FILE" ] && DEVICE_PASSWORD=$(cat $DEVICE_PASSWORD_FILE)
+if [ -z "$DEVICE_PASSWORD" ] ; then
+    [ -e "$DEVICE_PASSWORD_FILE" ] && DEVICE_PASSWORD=$(cat $DEVICE_PASSWORD_FILE) || DEVICE_PASSWORD=0000
+fi
 
 if check_device_accessible ; then
     DEVICE_ARCH=$(exec_device "dpkg --print-architecture" 2>&1 | tr -d '\r')
     if echo "$DEVICE_ARCH" | grep -vq "not found"; then
-        TARGET_ARCH=$DEVICE_ARCH
-        TARGET_UBUNTU=$(exec_device "lsb_release --release --short" | tr -d '\r')
+        DETECTED_TARGET_ARCH=$DEVICE_ARCH
+        DETECTED_TARGET_UBUNTU=$(exec_device "lsb_release --release --short" | tr -d '\r')
         DEPLOY=true
     fi
 fi;
 
-while [ "$1" != "" ]; do
-    OPTION=`echo $1 | awk -F= '{print $1}'`
-    VALUE=`echo $1 | awk -F= '{print $2}'`
-    case $1 in
-        -*)
-            case $OPTION in
-            --packages)
-                PACKAGES_TO_DEPLOY=$VALUE
-            ;;
-            --architecture)
-                TARGET_ARCH=$VALUE
-            ;;
-            --ubuntu)
-                TARGET_UBUNTU=$VALUE
-            ;;
-            --lxd-image)
-                LXD_IMAGE=$VALUE
-            ;;
-            --password)
-                DEVICE_PASSWORD=$VALUE
-            ;;
-            --no-deb)
-                NO_DEB=1
-            ;;
-            --deploy-path)
-                DEPLOY_PATH=$VALUE
-            ;;
-            --privileged)
-                FORCE_PRIVILEGED=1
-            ;;
-            --ephemeral)
-                EPHEMERAL_CONTAINER=1
-                EPHEMERAL_FLAG=--ephemeral
-            ;;
-            --parallel)
-                PARALLEL_BUILD=$VALUE
-            ;;
-            --help)
-                display_help
-                exit 0
-            ;;
-            *)
-                display_help
-                echo ""
-                echo -e "${ERROR_COLOR}error: unknown option: $OPTION${NC}"
-                exit 1
-            ;;
-            esac
-            shift
-        ;;
-        *)
-            break
-        ;;
-    esac
-done
+TARGET_ARCH="${TARGET_ARCH:-${DETECTED_TARGET_ARCH:-armhf}}"
+TARGET_UBUNTU="${TARGET_UBUNTU:-${DETECTED_TARGET_UBUNTU:-16.04}}"
 
 if [ -z "$LXD_IMAGE" ] ; then
     LXD_IMAGE=ubports-sdk:ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
-fi
-
-COMMAND=$1
-if [ -n "$COMMAND" ] ; then
-    shift
-fi
-
-if [ "$COMMAND" = "help" ] ; then
-    display_help
-    exit 0
 fi
 
 check_command_parameter_count () {
