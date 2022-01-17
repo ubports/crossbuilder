@@ -78,20 +78,36 @@ display_help () {
     echo "  --no-deb         - Do not build Debian packages and uses rsync to deploy the build artifacts."
     echo "  --deploy-path    - When deploying with --no-deb (rsync), installation path for the build artifacts [defaults to /]."
     echo "  --parallel       - Set parallelism of the build. Defaults to the number of logical core + 1."
+    echo "  --ssh            - Use ssh with provided address instead of adb."
 }
 
 
 exec_device () {
-    #echo adb shell "$@"
+    if [ ! -z "$SSH_ADDRESS" ] ; then 
+        ssh -o "ConnectTimeout=5" "$SSH_ADDRESS" "$@" || true
+        return
+    fi
+
     adb shell "$@"
 }
 
 push_device () {
-    #echo adb push "$@"
+    if [ ! -z "$SSH_ADDRESS" ] ; then 
+        local last="${!#}"
+        local argv=( "${@:1:$#-1}" )
+        scp ${argv[@]} "$SSH_ADDRESS:$last"
+        return
+    fi
+
     adb push "$@"
 }
 
 check_file_exists_device () {
+    if [ ! -z "$SSH_ADDRESS" ] ; then 
+        ssh -o "ConnectTimeout=5" -q "$SSH_ADDRESS" '[ -e "'$1'" ]'
+        return
+    fi
+
     if ! adb pull "$1" /tmp 2>&1 >/dev/null ; then
         # Some pull error, so we can assume, that the file doesn't exist.
         return 1
@@ -102,6 +118,11 @@ check_file_exists_device () {
 }
 
 check_device_accessible () {
+    if [ ! -z "$SSH_ADDRESS" ] ; then 
+        ssh -o "ConnectTimeout=5" -q "$SSH_ADDRESS" "exit"
+        return
+    fi
+
     local DEVICE_STATE=$(adb get-state 2>/dev/null || true)
     if [ "$DEVICE_STATE" = "device" ] ; then
         # Device found
@@ -966,6 +987,9 @@ while [ "$1" != "" ]; do
             --parallel)
                 PARALLEL_BUILD=$VALUE
             ;;
+            --ssh)
+                SSH_ADDRESS=$VALUE
+            ;;
             --help)
                 display_help
                 exit 0
@@ -996,13 +1020,24 @@ if [ "$COMMAND" = "help" ] ; then
 fi
 
 MISSING_PACKAGES=
-if ! which adb > /dev/null 2>&1 ; then
-    if which apt > /dev/null 2>&1 ; then
-        MISSING_PACKAGES="android-tools-adb $MISSING_PACKAGES"
-    elif which pacman > /dev/null 2>&1 ; then
-        MISSING_PACKAGES="android-tools $MISSING_PACKAGES"
+if [ -z "$SSH_ADDRESS" ] ; then
+    if ! which adb > /dev/null 2>&1 ; then
+        if which apt > /dev/null 2>&1 ; then
+            MISSING_PACKAGES="android-tools-adb $MISSING_PACKAGES"
+        elif which pacman > /dev/null 2>&1 ; then
+            MISSING_PACKAGES="android-tools $MISSING_PACKAGES"
+        fi
+    fi
+else
+    if ! which ssh > /dev/null 2>&1 || ! which scp > /dev/null 2>&1 ; then
+        if which apt > /dev/null 2>&1 ; then
+            MISSING_PACKAGES="openssh-client $MISSING_PACKAGES"
+        elif which pacman > /dev/null 2>&1 ; then
+            MISSING_PACKAGES="openssh $MISSING_PACKAGES"
+        fi
     fi
 fi
+
 if ! which jq > /dev/null; then
     MISSING_PACKAGES="jq $MISSING_PACKAGES"
 fi
@@ -1086,7 +1121,7 @@ if check_device_accessible ; then
         DETECTED_TARGET_UBUNTU=$(exec_device "lsb_release --release --short" | tr -d '\r')
         DEPLOY=true
     fi
-fi;
+fi
 
 TARGET_ARCH="${TARGET_ARCH:-${DETECTED_TARGET_ARCH:-armhf}}"
 TARGET_UBUNTU="${TARGET_UBUNTU:-${DETECTED_TARGET_UBUNTU:-16.04}}"
