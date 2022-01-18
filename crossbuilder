@@ -74,11 +74,11 @@ display_help () {
     echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-16.04-amd64-armhf-dev)."
     echo "  --privileged     - Use a privileged container (disabled by default)."
     echo "  --ephemeral      - Build using a short-lived container (disabled by default)."
+    echo "  --ssh            - Use ssh with provided address instead of adb to deploy to device."
     echo "  --password       - User password of the device to deploy to [defaults to 0000]."
     echo "  --no-deb         - Do not build Debian packages and uses rsync to deploy the build artifacts."
     echo "  --deploy-path    - When deploying with --no-deb (rsync), installation path for the build artifacts [defaults to /]."
     echo "  --parallel       - Set parallelism of the build. Defaults to the number of logical core + 1."
-    echo "  --ssh            - Use ssh with provided address instead of adb."
 }
 
 
@@ -974,6 +974,9 @@ while [ "$1" != "" ]; do
             --lxd-image)
                 LXD_IMAGE=$VALUE
             ;;
+            --ssh)
+                SSH_ADDRESS=$VALUE
+            ;;
             --password)
                 DEVICE_PASSWORD=$VALUE
             ;;
@@ -992,9 +995,6 @@ while [ "$1" != "" ]; do
             ;;
             --parallel)
                 PARALLEL_BUILD=$VALUE
-            ;;
-            --ssh)
-                SSH_ADDRESS=$VALUE
             ;;
             --help)
                 display_help
