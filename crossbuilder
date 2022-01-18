@@ -877,7 +877,13 @@ deploy_make_install () {
         DEPLOY_PATH="/"
     fi
 
-    sync_with_device $FOLDERS_TO_DEPLOY $DEPLOY_PATH
+    if [ ! -z "$SSH_ADDRESS" ]; then
+        # There is an ssh address already provided, skip sync_with_device script and just run the rsync.
+        rsync --rsync-path='SUDO_ASKPASS=/tmp/askpass.sh sudo -A rsync' -vae "ssh" $FOLDERS_TO_DEPLOY $SSH_ADDRESS:$DEPLOY_PATH
+        return
+    fi
+
+    . "$SCRIPT_DIR/sync_with_device" $FOLDERS_TO_DEPLOY $DEPLOY_PATH
 }
 
 deploy_to_device () {
