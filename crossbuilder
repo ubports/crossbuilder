@@ -1146,7 +1146,7 @@ check_command_parameter_count () {
         echo -e "${ERROR_COLOR}Command '$COMMAND' requires a minimum of $MIN_PARAMETERS parameters. $COUNT passed.${NC}"
         exit 1
     fi
-    if [ -n $MAX_PARAMETERS ] && [ $COUNT -gt $MAX_PARAMETERS ] ; then
+    if [ $# -gt 1 ] && [ -n $MAX_PARAMETERS ] && [ $COUNT -gt $MAX_PARAMETERS ] ; then
         display_help
         echo ""
         echo -e "${ERROR_COLOR}Command '$COMMAND' accepts at most $MAX_PARAMETERS parameters. $COUNT passed.${NC}"
@@ -1305,10 +1305,10 @@ else
             install_dependencies
         ;;
         inst-foreign)
-            check_command_parameter_count 1 1
+            check_command_parameter_count 1
             enter_new_or_detect_package
             variables
-            install_foreign $1
+            install_foreign $PARAMETERS
         ;;
         build)
             NEW_BUILD=1
