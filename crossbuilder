@@ -682,6 +682,7 @@ install_dependencies () {
             exec_container_root "printf '/usr/local/bin\n/usr/lib/$TARGET_FARCH\n' > /usr/share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf"
             exec_container_root ln -f -s ../../../share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf /usr/lib/$HOST_FARCH/qtchooser/qt5.conf
             # Fix moc and other missing tools for cmake
+            exec_container_root mkdir -p /usr/lib/$HOST_FARCH/qt5/bin/
             for TOOL in moc qdbusxml2cpp rcc
             do
                 exec_container_root ln -f -s ../../../qt5/bin/$TOOL /usr/lib/$HOST_FARCH/qt5/bin/
