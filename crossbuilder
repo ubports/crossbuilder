@@ -1134,7 +1134,13 @@ TARGET_ARCH="${TARGET_ARCH:-${DETECTED_TARGET_ARCH:-armhf}}"
 TARGET_UBUNTU="${TARGET_UBUNTU:-${DETECTED_TARGET_UBUNTU:-16.04}}"
 
 if [ -z "$LXD_IMAGE" ] ; then
-    LXD_IMAGE=ubports-sdk:ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
+    # The ubports-sdk image server only hosts images for xenial; for other
+    # releases, let's use the ubuntu default image server
+    if [ "${TARGET_UBUNTU}" == "16.04" ]; then
+        LXD_IMAGE=ubports-sdk:ubuntu-sdk-$TARGET_UBUNTU-$HOST_ARCH-$TARGET_ARCH-dev
+    else
+        LXD_IMAGE=ubuntu:$TARGET_UBUNTU
+    fi
 fi
 
 check_command_parameter_count () {
