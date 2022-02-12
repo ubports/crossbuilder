@@ -81,33 +81,41 @@ display_help () {
     echo "  --parallel       - Set parallelism of the build. Defaults to the number of logical core + 1."
 }
 
+#
+# SSH backend
+#
 
-exec_device () {
-    if [ ! -z "$SSH_ADDRESS" ] ; then 
-        ssh -o "ConnectTimeout=5" "$SSH_ADDRESS" "$@" || true
-        return
-    fi
+ssh_exec () {
+    ssh -o "ConnectTimeout=5" "$SSH_ADDRESS" "$@" || true
+}
 
+ssh_push () {
+    local last="${!#}"
+    local argv=( "${@:1:$#-1}" )
+    scp ${argv[@]} "$SSH_ADDRESS:$last"
+}
+
+ssh_file_exists () {
+    ssh -o "ConnectTimeout=5" -q "$SSH_ADDRESS" '[ -e "'$1'" ]'
+}
+
+ssh_is_accessible () {
+    ssh -o "ConnectTimeout=5" -q "$SSH_ADDRESS" "exit"
+}
+
+#
+# ADB backend
+#
+
+adb_exec () {
     adb shell "$@"
 }
 
-push_device () {
-    if [ ! -z "$SSH_ADDRESS" ] ; then 
-        local last="${!#}"
-        local argv=( "${@:1:$#-1}" )
-        scp ${argv[@]} "$SSH_ADDRESS:$last"
-        return
-    fi
-
+adb_push () {
     adb push "$@"
 }
 
-check_file_exists_device () {
-    if [ ! -z "$SSH_ADDRESS" ] ; then 
-        ssh -o "ConnectTimeout=5" -q "$SSH_ADDRESS" '[ -e "'$1'" ]'
-        return
-    fi
-
+adb_file_exists () {
     if ! adb pull "$1" /tmp 2>&1 >/dev/null ; then
         # Some pull error, so we can assume, that the file doesn't exist.
         return 1
@@ -117,18 +125,21 @@ check_file_exists_device () {
     return 0
 }
 
-check_device_accessible () {
-    if [ ! -z "$SSH_ADDRESS" ] ; then 
-        ssh -o "ConnectTimeout=5" -q "$SSH_ADDRESS" "exit"
-        return
+adb_is_accessible () {
+    local DEVICE_STATE=$(adb get-state 2>/dev/null || true)
+    test "$DEVICE_STATE" = "device"
+}
+
+device () {
+    if [ ! -z "$SSH_ADDRESS" ] ; then
+        DEVICE_BACKEND=ssh
+    else
+        DEVICE_BACKEND=adb
     fi
 
-    local DEVICE_STATE=$(adb get-state 2>/dev/null || true)
-    if [ "$DEVICE_STATE" = "device" ] ; then
-        # Device found
-        return 0
-    fi
-    return 1
+    ACTION="$1"
+    shift
+    ${DEVICE_BACKEND}_${ACTION} "$@"
 }
 
 exec_container_root () {
@@ -806,7 +817,7 @@ check_for_device_network() {
     NETWORK_UP=0
     for i in `seq 1 5`
     do
-        if exec_device "ping -c1 -w1 google.com" | grep PING > /dev/null 2>&1 ; then
+        if device exec "ping -c1 -w1 google.com" | grep PING > /dev/null 2>&1 ; then
             NETWORK_UP=1
             break
         fi
@@ -825,9 +836,9 @@ deploy_deb () {
 
     echo -e "${POSITIVE_COLOR}Transferring Debian packages to device.${NC}"
     # tranfer debian packages to device
-    exec_device mkdir -p /tmp/repo
-    push_device $DEBS_TARBALL /tmp/repo/
-    exec_device "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm -f /tmp/repo/$DEBS_TARBALL_ROOT*"
+    device exec mkdir -p /tmp/repo
+    device push $DEBS_TARBALL /tmp/repo/
+    device exec "cd /tmp/repo && tar xvf /tmp/repo/$DEBS_TARBALL && rm -f /tmp/repo/$DEBS_TARBALL_ROOT*"
 
     # install debian packages on device
     if [ ! -z "$PACKAGES_TO_DEPLOY" ] ; then
@@ -836,28 +847,28 @@ deploy_deb () {
         for package in $PACKAGES_TO_DEPLOY ; do
             DPKG_ARGS="$DPKG_ARGS /tmp/repo/$package"_"$NEW_PACKAGE_VERSION"_"$TARGET_ARCH.deb"
         done
-        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i $DPKG_ARGS
+        device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A dpkg -i $DPKG_ARGS
     else
         check_for_device_network
         echo -e "${POSITIVE_COLOR}Upgrading packages already installed on device with newly built ones.${NC}"
         # create local deb repository on device
-        if ! check_file_exists_device /tmp/repo/$CREATE_REPO_SCRIPT ; then
-            push_device $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
-            exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
-            exec_device "printf 'deb file:/tmp/repo/ /\n' > /tmp/repo/sources.list"
-            exec_device "cp /etc/apt/sources.list /tmp/repo/all.list"
-            exec_device "cat /tmp/repo/sources.list >> /tmp/repo/all.list"
-            SERIES=$(exec_device "lsb_release -cs" | tr -d '\r')
-            exec_device "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
-#            exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
+        if ! device file_exists /tmp/repo/$CREATE_REPO_SCRIPT ; then
+            device push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
+            device exec /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
+            device exec "printf 'deb file:/tmp/repo/ /\n' > /tmp/repo/sources.list"
+            device exec "cp /etc/apt/sources.list /tmp/repo/all.list"
+            device exec "cat /tmp/repo/sources.list >> /tmp/repo/all.list"
+            SERIES=$(device exec "lsb_release -cs" | tr -d '\r')
+            device exec "printf 'Package: *\nPin: release o=local\nPin-Priority: 2000\n\nPackage: *\nPin: release a=$SERIES*\nPin-Priority: 50' | SUDO_ASKPASS=/tmp/askpass.sh sudo -A tee /etc/apt/preferences.d/localrepo.pref"
+#            device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update
         else
-            exec_device /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
+            device exec /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
         fi;
 
-        exec_device "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 50' /etc/apt/preferences.d/extra-ppas.pref"
-        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A  apt-get update -o Dir::Etc::sourcelist="/tmp/repo/sources.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
-        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade -o Dir::Etc::sourcelist="/tmp/repo/all.list" --yes --force-yes
-        exec_device "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 1001' /etc/apt/preferences.d/extra-ppas.pref"
+        device exec "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 50' /etc/apt/preferences.d/extra-ppas.pref"
+        device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A  apt-get update -o Dir::Etc::sourcelist="/tmp/repo/sources.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+        device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade -o Dir::Etc::sourcelist="/tmp/repo/all.list" --yes --force-yes
+        device exec "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 1001' /etc/apt/preferences.d/extra-ppas.pref"
     fi;
 }
 
@@ -888,25 +899,25 @@ deploy_make_install () {
 }
 
 deploy_to_device () {
-    if ! check_device_accessible ; then
+    if ! device is_accessible ; then
         echo -e "${ERROR_COLOR}No device connected to deploy to.${NC}"
         exit 1
     fi;
 
     # setup sudo on device
-    exec_device "printf '#\041/bin/sh\necho $DEVICE_PASSWORD' >/tmp/askpass.sh"
-    exec_device chmod +x /tmp/askpass.sh
+    device exec "printf '#\041/bin/sh\necho $DEVICE_PASSWORD' >/tmp/askpass.sh"
+    device exec chmod +x /tmp/askpass.sh
 
     # check password is correct
-    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A touch /tmp/password_ok
-    if check_file_exists_device /tmp/password_ok ; then
-        exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A rm -f /tmp/password_ok
+    device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A touch /tmp/password_ok
+    if device file_exists /tmp/password_ok ; then
+        device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A rm -f /tmp/password_ok
     else
         echo -e "${ERROR_COLOR}Device password incorrect. Use --password to pass the correct one or write it in $DEVICE_PASSWORD_FILE.${NC}"
         exit 1
     fi
 
-    exec_device SUDO_ASKPASS=/tmp/askpass.sh sudo -A mount -o remount,rw /
+    device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A mount -o remount,rw /
 
     if [ -n "$NO_DEB" ] ; then
         deploy_make_install
@@ -917,8 +928,8 @@ deploy_to_device () {
     # execute post deploy
     if test -e $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT ; then
         echo -e "${POSITIVE_COLOR}Execute project specific post deploy script ($POST_DEPLOY_SCRIPT).${NC}"
-        push_device $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT /tmp
-        exec_device sh /tmp/$(basename $POST_DEPLOY_SCRIPT)
+        device push $SOURCE_PATH_LOCAL/$POST_DEPLOY_SCRIPT /tmp
+        device exec sh /tmp/$(basename $POST_DEPLOY_SCRIPT)
     else
         echo -e "${POSITIVE_COLOR}If a script named $POST_DEPLOY_SCRIPT existed, it would be executed on device after every deploy.${NC}"
     fi
@@ -1121,11 +1132,11 @@ if [ -z "$DEVICE_PASSWORD" ] ; then
     [ -e "$DEVICE_PASSWORD_FILE" ] && DEVICE_PASSWORD=$(cat $DEVICE_PASSWORD_FILE) || DEVICE_PASSWORD=0000
 fi
 
-if check_device_accessible ; then
-    DEVICE_ARCH=$(exec_device "dpkg --print-architecture" 2>&1 | tr -d '\r')
+if device is_accessible ; then
+    DEVICE_ARCH=$(device exec "dpkg --print-architecture" 2>&1 | tr -d '\r')
     if echo "$DEVICE_ARCH" | grep -vq "not found"; then
         DETECTED_TARGET_ARCH=$DEVICE_ARCH
-        DETECTED_TARGET_UBUNTU=$(exec_device "lsb_release --release --short" | tr -d '\r')
+        DETECTED_TARGET_UBUNTU=$(device exec "lsb_release --release --short" | tr -d '\r')
         DEPLOY=true
     fi
 fi
