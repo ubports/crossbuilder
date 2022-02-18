@@ -676,7 +676,7 @@ install_dependencies () {
         rm ${TMP_DIR}/control
 
         QMAKE=$(exec_container "find /usr -executable -type f -path '*/bin/*' -name '*qmake*' | grep $TARGET_FARCH" | head -1)
-        if [ -n "$QMAKE" ]; then
+        if [ -n "$QMAKE" ] && [ "$HOST_ARCH" != "$TARGET_ARCH" ]; then
             echo -e "${POSITIVE_COLOR}Setting $QMAKE as the default qmake binary.${NC}"
             exec_container_root "ln -s -f $QMAKE /usr/local/bin/qmake"
             exec_container_root "printf '/usr/local/bin\n/usr/lib/$TARGET_FARCH\n' > /usr/share/qtchooser/qt5-$HOST_FARCH-$TARGET_FARCH.conf"
@@ -687,7 +687,7 @@ install_dependencies () {
             do
                 exec_container_root ln -f -s ../../../qt5/bin/$TOOL /usr/lib/$HOST_FARCH/qt5/bin/
             done
-        else
+        elif [ "$HOST_ARCH" != "$TARGET_ARCH" ]; then
             echo "Note: qmake not found"
         fi
 
