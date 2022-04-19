@@ -497,6 +497,9 @@ create_container () {
     if ! echo "$LXD_IMAGE" | grep -q "ubuntu-sdk"; then
         nonsdk_container_setup
     fi
+    exec_container_root "printf 'APT::Periodic::Update-Package-Lists \"0\";\n\
+APT::Periodic::Unattended-Upgrade \"0\";\n\
+' > /etc/apt/apt.conf.d/20auto-upgrades"
     exec_container_root apt update
     exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static
     exec_container_root adduser $USERNAME sudo
