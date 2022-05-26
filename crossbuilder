@@ -71,6 +71,7 @@ display_help () {
     echo "  --packages       - Packages to deploy [by default: all the ones already installed on device]."
     echo "  --architecture   - Architecture to build for [defaults to architecture of connected device, if none then armhf]."
     echo "  --ubuntu         - Version of Ubuntu to build for [defaults to version of connected device, if none then 16.04]."
+    echo "  --extra-repo     - Extra repository to enable (example: ppa:mardy/qbs-on-lts). This option can be repeated."
     echo "  --lxd-image      - LXD image to use [defaults to the ones provided by the Ubuntu SDK (example: ubuntu-sdk-16.04-amd64-armhf-dev)."
     echo "  --privileged     - Use a privileged container (disabled by default)."
     echo "  --ephemeral      - Build using a short-lived container (disabled by default)."
@@ -500,6 +501,10 @@ create_container () {
     exec_container_root "printf 'APT::Periodic::Update-Package-Lists \"0\";\n\
 APT::Periodic::Unattended-Upgrade \"0\";\n\
 ' > /etc/apt/apt.conf.d/20auto-upgrades"
+    for EXTRA_REPO in $EXTRA_REPOS
+    do
+        exec_container_root "add-apt-repository -y $EXTRA_REPO"
+    done
     exec_container_root apt update
     exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static
     exec_container_root adduser $USERNAME sudo
@@ -985,6 +990,9 @@ while [ "$1" != "" ]; do
             ;;
             --ubuntu)
                 TARGET_UBUNTU=$VALUE
+            ;;
+            --extra-repo)
+                EXTRA_REPOS="$EXTRA_REPOS $VALUE"
             ;;
             --lxd-image)
                 LXD_IMAGE=$VALUE
