@@ -858,7 +858,7 @@ deploy_deb () {
         if ! device file_exists /tmp/repo/$CREATE_REPO_SCRIPT ; then
             device push $SCRIPT_DIR/$CREATE_REPO_SCRIPT /tmp/repo/
             device exec /tmp/repo/$CREATE_REPO_SCRIPT /tmp/repo
-            device exec "printf 'deb file:/tmp/repo/ /\n' > /tmp/repo/sources.list"
+            device exec "printf 'deb [trusted=yes] file:/tmp/repo/ /\n' > /tmp/repo/sources.list"
             device exec "cp /etc/apt/sources.list /tmp/repo/all.list"
             device exec "cat /tmp/repo/sources.list >> /tmp/repo/all.list"
             SERIES=$(device exec "lsb_release -cs" | tr -d '\r')
