@@ -506,7 +506,7 @@ APT::Periodic::Unattended-Upgrade \"0\";\n\
         exec_container_root "add-apt-repository -y $EXTRA_REPO"
     done
     exec_container_root apt update
-    exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static
+    exec_container_root apt install -y sudo debhelper ccache software-properties-common devscripts equivs qemu-user-static ca-certificates
     exec_container_root adduser $USERNAME sudo
     # set empty password for the user
     exec_container_root passwd --delete $USERNAME
