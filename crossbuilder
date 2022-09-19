@@ -1100,16 +1100,16 @@ if ! which lxd > /dev/null ; then
     echo
     if [ "$REPLY" = y ]
     then
-        if which apt-get > /dev/null 2>&1 ; then
+        if which snap > /dev/null 2>&1 ; then
+            echo "sudo snap install lxd"
+            sudo snap install lxd
+        elif which apt-get > /dev/null 2>&1 ; then
             echo "sudo apt-get install -y lxd lxd-client"
             sudo apt-get install -y lxd lxd-client
         elif which pacman > /dev/null 2>&1 ; then
             echo "sudo pacman -Syu --noconfirm lxd"
             sudo pacman -Syu lxd
             lxd_service_action start
-        elif which snap > /dev/null 2>&1 ; then
-            echo "sudo snap install lxd"
-            sudo snap install lxd
         else
             echo -e "${ERROR_COLOR}No known package manager found to install lxd containers.${NC}"
             exit 1
