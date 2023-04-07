@@ -17,7 +17,7 @@ cd yourproject/
 crossbuilder
 ```
 
-Crossbuilder by default builds for armhf architecture. To build for arm64 run:
+Crossbuilder by default builds for armhf architecture. If a device is connected, it should detect the devices architecture. In case for some reason the architecture needs to be explicitely specified, it can be set like this:
 ```bash
 crossbuilder --architecture=arm64
 ```
