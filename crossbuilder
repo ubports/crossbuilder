@@ -907,7 +907,7 @@ check_for_device_network() {
     NETWORK_UP=0
     for i in `seq 1 5`
     do
-        if device exec "ping -c1 -w1 google.com" | grep PING > /dev/null 2>&1 ; then
+        if device exec "ping -c1 -w1 ubports.com" | grep PING > /dev/null 2>&1 ; then
             NETWORK_UP=1
             break
         fi
