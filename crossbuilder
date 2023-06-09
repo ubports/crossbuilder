@@ -158,7 +158,7 @@ exec_container () {
 variables () {
     DEBS_TARBALL_ROOT=debs
     if [ -n "$NEW_BUILD" ] ; then
-        NEW_PACKAGE_VERSION=$PACKAGE_VERSION"local~"`date +%s`
+        NEW_PACKAGE_VERSION=$PACKAGE_VERSION"+1local~"`date +%s`
     else
         LATEST_DEBS_TARBALL=$(ls -1 --sort=time $DEBS_TARBALL_ROOT_*.tar 2> /dev/null | head -n1)
         NEW_PACKAGE_VERSION=$(echo $LATEST_DEBS_TARBALL | sed "s/$DEBS_TARBALL_ROOT\_//" | sed "s/\.tar//")
