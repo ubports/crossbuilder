@@ -1152,8 +1152,8 @@ if device is_accessible ; then
     fi
 fi
 
-TARGET_ARCH="${TARGET_ARCH:-${DETECTED_TARGET_ARCH:-armhf}}"
-TARGET_UBUNTU="${TARGET_UBUNTU:-${DETECTED_TARGET_UBUNTU:-16.04}}"
+TARGET_ARCH="${TARGET_ARCH:-${DETECTED_TARGET_ARCH:-arm64}}"
+TARGET_UBUNTU="${TARGET_UBUNTU:-${DETECTED_TARGET_UBUNTU:-20.04}}"
 
 if [ -z "$LXD_IMAGE" ] ; then
     # The ubports-sdk image server only hosts images for xenial; for other
