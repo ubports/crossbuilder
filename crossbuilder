@@ -408,11 +408,13 @@ nonsdk_container_setup () {
     # shellcheck disable=SC2016
     container_ubuntu_version=$(exec_container_root '. /etc/os-release && echo $VERSION_CODENAME')
 
-    case "$container_ubuntu_version" in
-        xenial|bionic) ubports_repo_line="deb http://repo.ubports.com/ $container_ubuntu_version main" ;;
-        focal) ubports_repo_line="deb http://repo2.ubports.com/ $container_ubuntu_version main" ;;
-    esac
-    if [ -n "$ubports_repo_line" ]; then
+    ut_version_info='https://gitlab.com/ubports/infrastructure/build-tools/-/raw/main/ut-version-info.json?ref_type=heads'
+    aptly_archive=$(wget -qO - "$ut_version_info" | \
+        jq --arg dist "$container_ubuntu_version" -r \
+            '[ .[] | select(.base_distro.release == $dist) ][0].aptly_archive // empty')
+
+    if [ -n "$aptly_archive" ]; then
+        ubports_repo_line="deb http://repo.ubports.com/ ${aptly_archive} main"
         exec_container_root "echo '$ubports_repo_line' >/etc/apt/sources.list.d/ubports.list"
     fi
 
