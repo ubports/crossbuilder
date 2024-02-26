@@ -436,6 +436,12 @@ nonsdk_container_setup () {
                 -e 's:(archive|security)\.ubuntu\.com/ubuntu/? :ports.ubuntu.com/ubuntu-ports/ :' \
                 -e 's:^deb :deb [arch=${TARGET_ARCH}] :' \
                 /etc/apt/sources.list >/etc/apt/sources.list.d/ports.list"
+            # Make sure we don't race with cloud-init. On some image it might
+            # not exists, so don't fail if this fails.
+            exec_container_root "sed -i -E \
+                -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
+                /etc/cloud/templates/sources.list.ubuntu.tmpl \
+                /etc/cloud/templates/sources.list.tmpl" || true
             exec_container_root "sed -i -E \
                 -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
                 /etc/apt/sources.list"
@@ -447,6 +453,12 @@ nonsdk_container_setup () {
                 -e 's:ports\.ubuntu\.com/ubuntu-ports/? ([a-z-]+):archive.ubuntu.com/ubuntu \1 :' \
                 -e 's:^deb :deb [arch=${TARGET_ARCH}] :' \
                 /etc/apt/sources.list >/etc/apt/sources.list.d/non-ports.list"
+            # Make sure we don't race with cloud-init. On some image it might
+            # not exists, so don't fail if this fails.
+            exec_container_root "sed -i -E \
+                -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
+                /etc/cloud/templates/sources.list.ubuntu.tmpl \
+                /etc/cloud/templates/sources.list.tmpl" || true
             exec_container_root "sed -i -E \
                 -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
                 /etc/apt/sources.list"
