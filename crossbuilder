@@ -433,9 +433,14 @@ nonsdk_container_setup () {
         i386-*|amd64-*)
             # Host is on archive, target is on ports.
             exec_container_root "sed -E \
-                -e 's:(archive|security)\.ubuntu\.com/ubuntu/:ports.ubuntu.com/ubuntu-ports/:' \
+                -e 's:(archive|security)\.ubuntu\.com/ubuntu/? :ports.ubuntu.com/ubuntu-ports/ :' \
                 -e 's:^deb :deb [arch=${TARGET_ARCH}] :' \
                 /etc/apt/sources.list >/etc/apt/sources.list.d/ports.list"
+            # Make sure we don't race with cloud-init. On some image it might
+            # not exists, so don't fail if this fails.
+            exec_container_root "sed -i -E \
+                -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
+                /etc/cloud/templates/sources.list.tmpl" || true
             exec_container_root "sed -i -E \
                 -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
                 /etc/apt/sources.list"
@@ -443,10 +448,15 @@ nonsdk_container_setup () {
         *-i386|*-amd64)
             # Host is on ports, target is on archive.
             exec_container_root "sed -E \
-                -e 's:ports\.ubuntu\.com/ubuntu-ports/ ([a-z]+)-security :security.ubuntu.com/ubuntu/ \1-security :' \
-                -e 's:ports\.ubuntu\.com/ubuntu-ports/ ([a-z-]+):archive.ubuntu.com/ubuntu/ \1 :' \
+                -e 's:ports\.ubuntu\.com/ubuntu-ports/? ([a-z]+)-security :security.ubuntu.com/ubuntu \1-security :' \
+                -e 's:ports\.ubuntu\.com/ubuntu-ports/? ([a-z-]+):archive.ubuntu.com/ubuntu \1 :' \
                 -e 's:^deb :deb [arch=${TARGET_ARCH}] :' \
                 /etc/apt/sources.list >/etc/apt/sources.list.d/non-ports.list"
+            # Make sure we don't race with cloud-init. On some image it might
+            # not exists, so don't fail if this fails.
+            exec_container_root "sed -i -E \
+                -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
+                /etc/cloud/templates/sources.list.tmpl" || true
             exec_container_root "sed -i -E \
                 -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
                 /etc/apt/sources.list"
