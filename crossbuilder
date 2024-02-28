@@ -486,6 +486,11 @@ create_container () {
     lxc init $LXD_IMAGE $LXD_CONTAINER $EPHEMERAL_FLAG
     if [ -n "$ENCRYPTED_HOME" ] || [ -n "$FORCE_PRIVILEGED" ] ; then
         lxc config set $LXD_CONTAINER security.privileged true
+        # Workaround an issue with security.privileged + newer Systemd.
+        # This weakens the security, but since this is a development setup, it's
+        # probably fine.
+        # https://github.com/canonical/lxd/issues/12967
+        lxc config set $LXD_CONTAINER security.nesting true
     else
         if [ "$(lxc --version | cut -f1 -d. )" -ge "3" ]; then
             IDMAP="lxc.idmap"
