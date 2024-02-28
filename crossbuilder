@@ -408,11 +408,13 @@ nonsdk_container_setup () {
     # shellcheck disable=SC2016
     container_ubuntu_version=$(exec_container_root '. /etc/os-release && echo $VERSION_CODENAME')
 
-    case "$container_ubuntu_version" in
-        xenial|bionic) ubports_repo_line="deb http://repo.ubports.com/ $container_ubuntu_version main" ;;
-        focal) ubports_repo_line="deb http://repo2.ubports.com/ $container_ubuntu_version main" ;;
-    esac
-    if [ -n "$ubports_repo_line" ]; then
+    ut_version_info='https://gitlab.com/ubports/infrastructure/build-tools/-/raw/main/ut-version-info.json?ref_type=heads'
+    aptly_archive=$(wget -qO - "$ut_version_info" | \
+        jq --arg dist "$container_ubuntu_version" -r \
+            '[ .[] | select(.base_distro.release == $dist) ][0].aptly_archive // empty')
+
+    if [ -n "$aptly_archive" ]; then
+        ubports_repo_line="deb http://repo.ubports.com/ ${aptly_archive} main"
         exec_container_root "echo '$ubports_repo_line' >/etc/apt/sources.list.d/ubports.list"
     fi
 
@@ -472,6 +474,11 @@ create_container () {
     lxc init $LXD_IMAGE $LXD_CONTAINER $EPHEMERAL_FLAG
     if [ -n "$ENCRYPTED_HOME" ] || [ -n "$FORCE_PRIVILEGED" ] ; then
         lxc config set $LXD_CONTAINER security.privileged true
+        # Workaround an issue with security.privileged + newer Systemd.
+        # This weakens the security, but since this is a development setup, it's
+        # probably fine.
+        # https://github.com/canonical/lxd/issues/12967
+        lxc config set $LXD_CONTAINER security.nesting true
     else
         if [ "$(lxc --version | cut -f1 -d. )" -ge "3" ]; then
             IDMAP="lxc.idmap"
