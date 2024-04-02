@@ -428,6 +428,14 @@ nonsdk_container_setup () {
     # i386 and amd64 archive is on http://archive.ubuntu.com/ubuntu/, while
     # other architectures' are on http://ports.ubuntu.com/ubuntu-ports/. Some
     # special handling for APT sources is needed.
+    if exec_container_root "[ -e /etc/apt/sources.list.d/ubuntu.sources ]"; then
+        fixup_archive_ubuntu_sources
+    else
+        fixup_archive_ubuntu_list
+    fi
+}
+
+fixup_archive_ubuntu_list() {
     case "${HOST_ARCH}-${TARGET_ARCH}" in
         i386-amd64|amd64-i386)
             # Both on archive, do nothing.
@@ -465,6 +473,47 @@ nonsdk_container_setup () {
                 -e 's:^deb :deb [arch=${HOST_ARCH}] :' \
                 /etc/apt/sources.list"
         ;;
+        # Not matched: both on ports, do nothing.
+    esac
+}
+
+fixup_archive_ubuntu_sources() {
+    case "${HOST_ARCH}-${TARGET_ARCH}" in
+        i386-amd64|amd64-i386)
+            # Both on archive, do nothing.
+            ;;
+        i386-*|amd64-*)
+            # Host is on archive, target is on ports.
+            exec_container_root "sed \
+                -e '/^URIs: /c Architectures: ${TARGET_ARCH}\nURIs: http://ports.ubuntu.com/ubuntu-ports' \
+                /etc/apt/sources.list.d/ubuntu.sources \
+                >/etc/apt/sources.list.d/ubuntu-ports.sources"
+            # Make sure we don't race with cloud-init. On some image it might
+            # not exists, so don't fail if this fails.
+            exec_container_root "sed -i \
+                -e '/^URIs: /i Architectures: ${HOST_ARCH}' \
+                /etc/cloud/templates/sources.list.ubuntu.deb822.tmpl" || true
+            exec_container_root "sed -i \
+                -e '/^URIs: /i Architectures: ${HOST_ARCH}' \
+                /etc/apt/sources.list.d/ubuntu.sources"
+            ;;
+        *-i386|*-amd64)
+            # Host is on ports, target is on archive.
+            exec_container_root "sed -E \
+                -e '/^URIs: /d' \
+                -e '/^Suites: [a-z]+ /i Architectures: ${TARGET_ARCH}\nURIs: http://archive.ubuntu.com/ubuntu' \
+                -e '/^Suites: [a-z]+-security/i Architectures: ${TARGET_ARCH}\nURIs: http://security.ubuntu.com/ubuntu' \
+                /etc/apt/sources.list.d/ubuntu.sources \
+                >/etc/apt/sources.list.d/ubuntu-archive.sources"
+            # Make sure we don't race with cloud-init. On some image it might
+            # not exists, so don't fail if this fails.
+            exec_container_root "sed -i \
+                -e '/^URIs: /i Architectures: ${HOST_ARCH}' \
+                /etc/cloud/templates/sources.list.ubuntu.deb822.tmpl" || true
+            exec_container_root "sed -i \
+                -e '/^URIs: /i Architectures: ${HOST_ARCH}' \
+                /etc/apt/sources.list.d/ubuntu.sources"
+            ;;
         # Not matched: both on ports, do nothing.
     esac
 }
