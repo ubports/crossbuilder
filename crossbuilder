@@ -406,12 +406,26 @@ start_container () {
 nonsdk_container_setup () {
     # We want the variable to be expanded inside the container.
     # shellcheck disable=SC2016
-    container_ubuntu_version=$(exec_container_root '. /etc/os-release && echo $VERSION_CODENAME')
+    container_distro=$(exec_container_root '. /etc/os-release && echo $VERSION_CODENAME')
+    # Since distro-info is inherently Debian and Ubuntu specific, install
+    # distro-info inside container to allow crossbuilder to be usable on other
+    # distros.
+    exec_container_root "
+        if ! type debian-distro-info >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y distro-info distro-info-data
+        fi"
+    # If not a Debian codename, debian-distro-info returns the input.
+    container_distro_alias=$(exec_container_root "debian-distro-info --alias=\"$container_distro\"")
 
     ut_version_info='https://gitlab.com/ubports/infrastructure/build-tools/-/raw/main/ut-version-info.json?ref_type=heads'
     aptly_archive=$(wget -qO - "$ut_version_info" | \
-        jq --arg dist "$container_ubuntu_version" -r \
-            '[ .[] | select(.base_distro.release == $dist) ][0].aptly_archive // empty')
+        jq -r \
+            --arg dist "$container_distro" \
+            --arg dist_alias "$container_distro_alias" \
+                '[ .[] | select(.base_distro.release as $r | 
+                    [$dist, $dist_alias] | index($r) != null) ]
+                 [0].aptly_archive // empty')
 
     if [ -n "$aptly_archive" ]; then
         ubports_repo_line="deb http://repo.ubports.com/ ${aptly_archive} main"
