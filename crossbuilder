@@ -444,7 +444,7 @@ nonsdk_container_setup () {
     # special handling for APT sources is needed.
     if exec_container_root "[ -e /etc/apt/sources.list.d/ubuntu.sources ]"; then
         fixup_archive_ubuntu_sources
-    else
+    elif exec_container_root "grep -q ubuntu /etc/apt/sources.list"; then
         fixup_archive_ubuntu_list
     fi
 }
