@@ -983,6 +983,7 @@ detect_host_architecture() {
             [arm-uefi]=uefi-armhf36 \
             [i386-uefi]=uefi-i38636 \
             [x86_64-linux-gnux32]=x32 \
+            [x86_64-redhat-linux]=amd64 \
         )
         HOST_ARCH=${MULTIARCH_TO_DEBIAN[$HOST_FARCH]}
     fi
