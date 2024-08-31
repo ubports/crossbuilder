@@ -17,6 +17,16 @@ cd yourproject/
 crossbuilder
 ```
 
+Crossbuilder by default builds for armhf architecture. If a device is connected, it should detect the devices architecture. In case for some reason the architecture needs to be explicitely specified, it can be set like this:
+```bash
+crossbuilder --architecture=arm64
+```
+
+To be able to install the deb on the device after building, the devices sudo password needs to be provided:
+```bash
+crossbuilder --password=PASSWORD
+```
+
 Change a line of code and type crossbuilder again to re-build and re-deploy.
 
 To go even faster, bypass building Debian packages with:
