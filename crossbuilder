@@ -406,13 +406,29 @@ start_container () {
 nonsdk_container_setup () {
     # We want the variable to be expanded inside the container.
     # shellcheck disable=SC2016
-    container_ubuntu_version=$(exec_container_root '. /etc/os-release && echo $VERSION_CODENAME')
+    container_distro=$(exec_container_root '. /etc/os-release && echo $VERSION_CODENAME')
+    # Since distro-info is inherently Debian and Ubuntu specific, install
+    # distro-info inside container to allow crossbuilder to be usable on other
+    # distros.
+    exec_container_root "
+        if ! type debian-distro-info >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y distro-info distro-info-data
+        fi"
+    # If not a Debian codename, debian-distro-info returns the input.
+    container_distro_alias=$(exec_container_root "debian-distro-info --alias=\"$container_distro\"")
 
-    case "$container_ubuntu_version" in
-        xenial|bionic) ubports_repo_line="deb http://repo.ubports.com/ $container_ubuntu_version main" ;;
-        focal) ubports_repo_line="deb http://repo2.ubports.com/ $container_ubuntu_version main" ;;
-    esac
-    if [ -n "$ubports_repo_line" ]; then
+    ut_version_info='https://gitlab.com/ubports/infrastructure/build-tools/-/raw/main/ut-version-info.json?ref_type=heads'
+    aptly_archive=$(wget -qO - "$ut_version_info" | \
+        jq -r \
+            --arg dist "$container_distro" \
+            --arg dist_alias "$container_distro_alias" \
+                '[ .[] | select(.base_distro.release as $r | 
+                    [$dist, $dist_alias] | index($r) != null) ]
+                 [0].aptly_archive // empty')
+
+    if [ -n "$aptly_archive" ]; then
+        ubports_repo_line="deb http://repo.ubports.com/ ${aptly_archive} main"
         exec_container_root "echo '$ubports_repo_line' >/etc/apt/sources.list.d/ubports.list"
     fi
 
@@ -426,6 +442,14 @@ nonsdk_container_setup () {
     # i386 and amd64 archive is on http://archive.ubuntu.com/ubuntu/, while
     # other architectures' are on http://ports.ubuntu.com/ubuntu-ports/. Some
     # special handling for APT sources is needed.
+    if exec_container_root "[ -e /etc/apt/sources.list.d/ubuntu.sources ]"; then
+        fixup_archive_ubuntu_sources
+    elif exec_container_root "grep -q ubuntu /etc/apt/sources.list"; then
+        fixup_archive_ubuntu_list
+    fi
+}
+
+fixup_archive_ubuntu_list() {
     case "${HOST_ARCH}-${TARGET_ARCH}" in
         i386-amd64|amd64-i386)
             # Both on archive, do nothing.
@@ -467,6 +491,47 @@ nonsdk_container_setup () {
     esac
 }
 
+fixup_archive_ubuntu_sources() {
+    case "${HOST_ARCH}-${TARGET_ARCH}" in
+        i386-amd64|amd64-i386)
+            # Both on archive, do nothing.
+            ;;
+        i386-*|amd64-*)
+            # Host is on archive, target is on ports.
+            exec_container_root "sed \
+                -e '/^URIs: /c Architectures: ${TARGET_ARCH}\nURIs: http://ports.ubuntu.com/ubuntu-ports' \
+                /etc/apt/sources.list.d/ubuntu.sources \
+                >/etc/apt/sources.list.d/ubuntu-ports.sources"
+            # Make sure we don't race with cloud-init. On some image it might
+            # not exists, so don't fail if this fails.
+            exec_container_root "sed -i \
+                -e '/^URIs: /i Architectures: ${HOST_ARCH}' \
+                /etc/cloud/templates/sources.list.ubuntu.deb822.tmpl" || true
+            exec_container_root "sed -i \
+                -e '/^URIs: /i Architectures: ${HOST_ARCH}' \
+                /etc/apt/sources.list.d/ubuntu.sources"
+            ;;
+        *-i386|*-amd64)
+            # Host is on ports, target is on archive.
+            exec_container_root "sed -E \
+                -e '/^URIs: /d' \
+                -e '/^Suites: [a-z]+ /i Architectures: ${TARGET_ARCH}\nURIs: http://archive.ubuntu.com/ubuntu' \
+                -e '/^Suites: [a-z]+-security/i Architectures: ${TARGET_ARCH}\nURIs: http://security.ubuntu.com/ubuntu' \
+                /etc/apt/sources.list.d/ubuntu.sources \
+                >/etc/apt/sources.list.d/ubuntu-archive.sources"
+            # Make sure we don't race with cloud-init. On some image it might
+            # not exists, so don't fail if this fails.
+            exec_container_root "sed -i \
+                -e '/^URIs: /i Architectures: ${HOST_ARCH}' \
+                /etc/cloud/templates/sources.list.ubuntu.deb822.tmpl" || true
+            exec_container_root "sed -i \
+                -e '/^URIs: /i Architectures: ${HOST_ARCH}' \
+                /etc/apt/sources.list.d/ubuntu.sources"
+            ;;
+        # Not matched: both on ports, do nothing.
+    esac
+}
+
 detect_farch_and_build_params_in_container () {
    HOST_FARCH=$(exec_container dpkg-architecture -f -a$HOST_ARCH -qDEB_BUILD_MULTIARCH)
    TARGET_FARCH=$(exec_container dpkg-architecture -f -a$TARGET_ARCH -qDEB_HOST_MULTIARCH)
@@ -484,6 +549,11 @@ create_container () {
     lxc init $LXD_IMAGE $LXD_CONTAINER $EPHEMERAL_FLAG
     if [ -n "$ENCRYPTED_HOME" ] || [ -n "$FORCE_PRIVILEGED" ] ; then
         lxc config set $LXD_CONTAINER security.privileged true
+        # Workaround an issue with security.privileged + newer Systemd.
+        # This weakens the security, but since this is a development setup, it's
+        # probably fine.
+        # https://github.com/canonical/lxd/issues/12967
+        lxc config set $LXD_CONTAINER security.nesting true
     else
         if [ "$(lxc --version | cut -f1 -d. )" -ge "3" ]; then
             IDMAP="lxc.idmap"
