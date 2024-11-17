@@ -956,8 +956,9 @@ deploy_deb () {
         fi;
 
         device exec "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 50' /etc/apt/preferences.d/extra-ppas.pref"
-        device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A  apt-get update -o Dir::Etc::sourcelist="/tmp/repo/sources.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
-        device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade -o Dir::Etc::sourcelist="/tmp/repo/all.list" --yes --force-yes
+        device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A umount /usr/share/session-migration/scripts
+        device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get update -o Dir::Etc::sourcelist="/tmp/repo/sources.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+        device exec SUDO_ASKPASS=/tmp/askpass.sh sudo -A apt-get dist-upgrade -o Dir::Etc::sourcelist="/tmp/repo/all.list" --yes --allow-change-held-packages -f
         device exec "SUDO_ASKPASS=/tmp/askpass.sh sudo -A sed -i '/Pin-Priority/c\Pin-Priority: 1001' /etc/apt/preferences.d/extra-ppas.pref"
     fi;
 }
