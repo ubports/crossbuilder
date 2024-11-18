@@ -26,6 +26,10 @@ To be able to install the deb on the device after building, the devices sudo pas
 ```bash
 crossbuilder --password=PASSWORD
 ```
+We can specify specific lxd images for the build process. This can be useful e.g. when building for specific target releases like 20.04. 
+```bash
+crossbuilder --lxd-image=ubuntu:20.04
+```
 
 Change a line of code and type crossbuilder again to re-build and re-deploy.
 
